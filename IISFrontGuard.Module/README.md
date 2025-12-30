@@ -1,11 +1,16 @@
-# IISFrontGuard Module
-
 [![Build Status](https://dev.azure.com/kacosta/IISFrontGuard/_apis/build/status%2FIISFrontGuard?branchName=)](https://dev.azure.com/kacosta/IISFrontGuard/_apis/build/status%2FIISFrontGuard?branchName=master)
 [![NuGet](https://img.shields.io/nuget/v/IISFrontGuard.Module.svg)](https://www.nuget.org/packages/IISFrontGuard.Module/)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=DeuxaX5M07WEtzjf4tc72Y3QSk2lqykrX3g123xwb9GKXkG7IYLuJQQJ99BLACAAAAAAAAAAAAASAZDO1MN9&metric=alert_status&token=ad420743823174abe0583d291546b8b5f6205dec)](https://sonarcloud.io/summary/new_code?id=DeuxaX5M07WEtzjf4tc72Y3QSk2lqykrX3g123xwb9GKXkG7IYLuJQQJ99BLACAAAAAAAAAAAAASAZDO1MN9)
 
-## Overview
+ # IISFrontGuard
 
-IISFrontGuard is an enterprise-grade IIS HTTP Module that provides comprehensive web application security for ASP.NET applications running on .NET Framework 4.8. It integrates seamlessly with IIS to provide multiple layers of protection against common web threats.
+ [![SonarQube Cloud](https://sonarcloud.io/images/project_badges/sonarcloud-light.svg)](https://sonarcloud.io/summary/new_code?id=DeuxaX5M07WEtzjf4tc72Y3QSk2lqykrX3g123xwb9GKXkG7IYLuJQQJ99BLACAAAAAAAAAAAAASAZDO1MN9)
+
+> **Disclaimer:** IISFrontGuard is a project name, not affiliated with Cloudflare or Microsoft Corp.
+
+[![Quality gate](https://sonarcloud.io/api/project_badges/quality_gate?project=DeuxaX5M07WEtzjf4tc72Y3QSk2lqykrX3g123xwb9GKXkG7IYLuJQQJ99BLACAAAAAAAAAAAAASAZDO1MN9&token=ad420743823174abe0583d291546b8b5f6205dec)](https://sonarcloud.io/summary/new_code?id=DeuxaX5M07WEtzjf4tc72Y3QSk2lqykrX3g123xwb9GKXkG7IYLuJQQJ99BLACAAAAAAAAAAAAASAZDO1MN9)
+
+IISFrontGuard is a Web Application Firewall (WAF) module for Internet Information Services (IIS) built on .NET Framework 4.8. It provides advanced security features including request filtering, rate limiting, managed/interactive challenges, and comprehensive logging with webhook notifications.
 
 ## Features
 
@@ -188,7 +193,7 @@ For complete uninstallation instructions, see `UNINSTALL_GUIDE.md` included in t
 ## Support
 
 For issues, questions, or contributions, please visit:
-- Project Repository: https://dev.azure.com/kacosta/IISFrontGuard
+- Project Repository: https://github.com/kenllyacosta/IISFrontGuard
 
 ## License
 

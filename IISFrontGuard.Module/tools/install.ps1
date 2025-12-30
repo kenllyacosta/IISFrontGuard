@@ -37,5 +37,4 @@ Write-Host "  • Content-Security-Policy (for HTML responses)" -ForegroundColor G
 Write-Host "  • Strict-Transport-Security (for HTTPS only)" -ForegroundColor Gray
 Write-Host ""
 Write-Host "Please see GETTING_STARTED.txt for detailed instructions." -ForegroundColor Cyan
-Write-Host "For security header details, see HEADER_SECURITY.md" -ForegroundColor Cyan
 Write-Host "=================================================================================" -ForegroundColor Cyan

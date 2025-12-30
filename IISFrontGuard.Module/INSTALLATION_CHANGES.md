@@ -128,9 +128,10 @@ If you're upgrading from a previous version:
 ### Support
 
 For issues or questions:
-- Project Repository: https://dev.azure.com/kacosta/IISFrontGuard
+- Project Repository: https://github.com/kenllyacosta/IISFrontGuard
 - Documentation: See included README.md and HEADER_SECURITY.md
 - Installation Guide: See GETTING_STARTED.txt
+- Nuget Package: https://www.nuget.org/packages/IISFrontGuard.Module
 
 ---
 

@@ -146,7 +146,6 @@
     </Content>
     <None Include="azure-pipelines.yml" />
     <None Include="Content\web.config.install.xdt" />
-    <None Include="ICON_README.md" />
     <None Include="IISFrontGuard.Module.nuspec" />
     <None Include="IISFrontGuard.Module.snk" />
     <None Include="INSTALLATION_CHANGES.md" />

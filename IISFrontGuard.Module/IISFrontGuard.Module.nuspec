@@ -9,13 +9,13 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <license type="expression">MIT</license>
     <icon>icon.png</icon>
-    <projectUrl>https://dev.azure.com/kacosta/IISFrontGuard</projectUrl>
+    <projectUrl>https://github.com/kenllyacosta/IISFrontGuard</projectUrl>
     <description>IISFrontGuard is an IIS HTTP Module providing comprehensive web application security including WAF functionality, rate limiting, geographic IP filtering, security event logging, automatic security header management, and webhook notifications for ASP.NET applications running on .NET Framework 4.8. Automatically removes server identification headers (X-Powered-By, Server) and adds essential security headers (CSP, HSTS, X-Frame-Options, etc.).</description>
     <summary>Enterprise-grade IIS security module with WAF, rate limiting, GeoIP filtering, and automatic security header management.</summary>
     <releaseNotes>Initial release with WAF, rate limiting, GeoIP filtering, automatic security header management, and webhook notification support.</releaseNotes>
     <copyright>Copyright � 2025</copyright>
     <tags>IIS Security WAF RateLimit GeoIP Module HttpModule AspNet WebSecurity Firewall</tags>
-    <repository type="git" url="https://dev.azure.com/kacosta/IISFrontGuard/_git/IISFrontGuard" />
+    <repository type="git" url="https://github.com/kenllyacosta/IISFrontGuard" />
     <readme>README.md</readme>
     <dependencies>
       <group targetFramework="net48">

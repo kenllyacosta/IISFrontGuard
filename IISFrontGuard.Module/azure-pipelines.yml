@@ -46,7 +46,7 @@ steps:
     SonarCloud: 'Sonar Service'
     organization: 'aslan'
     scannerMode: 'dotnet'
-    projectKey: ''
+    projectKey: $(projectKey)
     projectName: 'IISFrontGuard'
     extraProperties: |
       sonar.cs.vstest.reportsPaths=$(TestResultsDir)\**\*.trx
