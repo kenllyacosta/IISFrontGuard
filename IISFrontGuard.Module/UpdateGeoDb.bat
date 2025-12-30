@@ -1,0 +1,1 @@
+curl.exe -L -o GeoLite2-Country.mmdb https://raw.githubusercontent.com/6Kmfi6HP/maxmind/main/GeoLite2-Country.mmdb

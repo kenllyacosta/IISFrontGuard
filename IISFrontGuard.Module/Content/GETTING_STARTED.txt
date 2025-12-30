@@ -1,0 +1,120 @@
+================================================================================
+   IISFrontGuard Module - Getting Started Guide
+================================================================================
+
+Thank you for installing IISFrontGuard Module!
+
+IMPORTANT: Please complete the following steps to finish the setup:
+
+================================================================================
+STEP 1: DATABASE SETUP
+================================================================================
+
+1. Open SQL Server Management Studio (SSMS)
+2. Connect to your SQL Server instance
+3. Locate and execute the SQL script:
+   
+   Path: [Your Project]\Scripts\init.sql
+   
+   This creates the required tables:
+   - SecurityEvents (for logging security events)
+   - WafRules (for custom WAF rules)
+
+================================================================================
+STEP 2: VERIFY WEB.CONFIG SETTINGS
+================================================================================
+
+Your web.config has been automatically updated with default settings.
+Please review and modify as needed:
+
+1. CONNECTION STRING:
+   - Update the connection string 'IISFrontGuard' to point to your database
+   - Default: Data Source=.;Initial Catalog=IISFrontGuard;Integrated Security=True
+
+2. ENCRYPTION KEY:
+   - IMPORTANT: Change the IISFrontGuardEncryptionKey to a secure 16-character key
+   - Default: 1234567890123456 (DO NOT USE IN PRODUCTION!)
+
+3. RATE LIMITING:
+   - IISFrontGuard.RateLimitMaxRequestsPerMinute: Default is 150
+   - IISFrontGuard.RateLimitWindowSeconds: Default is 60
+
+4. WEBHOOK NOTIFICATIONS (Optional):
+   - Set IISFrontGuard.Webhook.Enabled to "true" if you want real-time notifications
+   - Configure IISFrontGuard.Webhook.Url and authentication settings
+
+5. SECURITY HEADERS (Recommended):
+   - Add the following to <system.webServer> for complete header removal:
+   
+   <httpProtocol>
+     <customHeaders>
+       <remove name="X-Powered-By" />
+     </customHeaders>
+   </httpProtocol>
+   
+   - Add the following to <system.web> to remove ASP.NET version:
+   
+   <httpRuntime enableVersionHeader="false" />
+
+================================================================================
+STEP 3: GEOIP DATABASE (Optional)
+================================================================================
+
+The package includes a GeoLite2-Country database for geographic filtering.
+
+To keep it updated:
+1. Register for a free MaxMind account at https://www.maxmind.com/
+2. Get your license key
+3. Run UpdateGeoDb.bat with your license key
+
+================================================================================
+STEP 4: CREATE WAF RULES
+================================================================================
+
+Add custom WAF rules to protect your application:
+
+Example - Block SQL Injection:
+
+INSERT INTO WafRules (Name, Priority, IsEnabled, Action, Conditions)
+VALUES ('Block SQL Injection', 100, 1, 'Block', 
+  '[{"Field":"QueryString","Operator":"Contains","Value":"UNION SELECT"}]');
+
+Example - Block Specific Countries:
+
+INSERT INTO WafRules (Name, Priority, IsEnabled, Action, Conditions)
+VALUES ('Block Specific Countries', 50, 1, 'Block',
+  '[{"Field":"Country","Operator":"Equals","Value":"CN,RU,KP"}]');
+
+================================================================================
+STEP 5: TEST YOUR INSTALLATION
+================================================================================
+
+1. Build your project
+2. Run your application in IIS or IIS Express
+3. Check that the FrontGuardModule is loaded
+4. Monitor SecurityEvents table for logged events
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+If the module is not working:
+
+1. Verify the HTTP module is registered in web.config under <system.webServer>
+2. Check that your application pool is using .NET Framework 4.8
+3. Verify database connectivity using the connection string
+4. Check IIS logs and Windows Event Viewer for errors
+
+================================================================================
+DOCUMENTATION & SUPPORT
+================================================================================
+
+For detailed documentation, visit:
+https://dev.azure.com/kacosta/IISFrontGuard
+
+For support and issues:
+https://dev.azure.com/kacosta/IISFrontGuard
+
+================================================================================
+                        You're all set! Happy securing!
+================================================================================

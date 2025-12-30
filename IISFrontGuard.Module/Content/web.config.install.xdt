@@ -1,0 +1,80 @@
+<?xml version="1.0"?>
+<configuration xmlns:xdt="http://schemas.microsoft.com/XML-Document-Transform">
+  <connectionStrings xdt:Transform="InsertIfMissing">
+    <add name="IISFrontGuard"
+         connectionString="Data Source=.;Initial Catalog=IISFrontGuard;Integrated Security=True;TrustServerCertificate=True;Min Pool Size=5;Max Pool Size=100;Connection Timeout=5;"
+         xdt:Transform="InsertIfMissing"
+         xdt:Locator="Match(name)" />
+  </connectionStrings>
+
+  <appSettings xdt:Transform="InsertIfMissing">
+    <!-- Database Configuration -->
+    <add key="IISFrontGuard.DefaultConnectionStringName" value="IISFrontGuard"
+         xdt:Transform="InsertIfMissing"
+         xdt:Locator="Match(key)" />
+    <add key="IISFrontGuardEncryptionKey" value="1234567890123456"
+         xdt:Transform="InsertIfMissing"
+         xdt:Locator="Match(key)" />
+
+    <!-- Rate Limiting Configuration -->
+    <add key="IISFrontGuard.RateLimitMaxRequestsPerMinute" value="150"
+         xdt:Transform="InsertIfMissing"
+         xdt:Locator="Match(key)" />
+    <add key="IISFrontGuard.RateLimitWindowSeconds" value="60"
+         xdt:Transform="InsertIfMissing"
+         xdt:Locator="Match(key)" />
+
+    <!-- Trusted Proxy IPs -->
+    <add key="TrustedProxyIPs" value=""
+         xdt:Transform="InsertIfMissing"
+         xdt:Locator="Match(key)" />
+
+    <!-- Webhook Configuration -->
+    <add key="IISFrontGuard.Webhook.Enabled" value="false"
+         xdt:Transform="InsertIfMissing"
+         xdt:Locator="Match(key)" />
+    <add key="IISFrontGuard.Webhook.Url" value=""
+         xdt:Transform="InsertIfMissing"
+         xdt:Locator="Match(key)" />
+    <add key="IISFrontGuard.Webhook.AuthHeader" value=""
+         xdt:Transform="InsertIfMissing"
+         xdt:Locator="Match(key)" />
+    <add key="IISFrontGuard.Webhook.CustomHeaders" value=""
+         xdt:Transform="InsertIfMissing"
+         xdt:Locator="Match(key)" />
+    <add key="IISFrontGuard.Webhook.FailureLogPath" value="C:\Logs\webhook-failures.log"
+         xdt:Transform="InsertIfMissing"
+         xdt:Locator="Match(key)" />
+  </appSettings>
+
+  <system.web xdt:Transform="InsertIfMissing">
+    <!-- Remove ASP.NET version header for security -->
+    <httpRuntime enableVersionHeader="false"
+                 xdt:Transform="SetAttributes(enableVersionHeader)" />
+  </system.web>
+
+  <system.webServer xdt:Transform="InsertIfMissing">
+    <modules xdt:Transform="InsertIfMissing">
+      <add name="FrontGuardModule"
+           type="IISFrontGuard.Module.FrontGuardModule, IISFrontGuard.Module"
+           preCondition="managedHandler,runtimeVersionv4.0"
+           xdt:Transform="InsertIfMissing"
+           xdt:Locator="Match(name)" />
+    </modules>
+
+    <!-- Remove X-Powered-By header for security -->
+    <httpProtocol xdt:Transform="InsertIfMissing">
+      <customHeaders xdt:Transform="InsertIfMissing">
+        <remove name="X-Powered-By"
+                xdt:Transform="InsertIfMissing"
+                xdt:Locator="Match(name)" />
+      </customHeaders>
+    </httpProtocol>
+
+    <!-- Optional: Remove Server header (IIS 10.0+ only) -->
+    <security xdt:Transform="InsertIfMissing">
+      <requestFiltering removeServerHeader="true"
+                        xdt:Transform="SetAttributes(removeServerHeader)" />
+    </security>
+  </system.webServer>
+</configuration>

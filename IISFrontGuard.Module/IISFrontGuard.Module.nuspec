@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata>
+    <id>IISFrontGuard.Module</id>
+    <version>1.0.0</version>
+    <title>IISFrontGuard Module</title>
+    <authors>IISFrontGuard Team</authors>
+    <owners>IISFrontGuard Team</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <license type="expression">MIT</license>
+    <icon>icon.png</icon>
+    <projectUrl>https://dev.azure.com/kacosta/IISFrontGuard</projectUrl>
+    <description>IISFrontGuard is an IIS HTTP Module providing comprehensive web application security including WAF functionality, rate limiting, geographic IP filtering, security event logging, automatic security header management, and webhook notifications for ASP.NET applications running on .NET Framework 4.8. Automatically removes server identification headers (X-Powered-By, Server) and adds essential security headers (CSP, HSTS, X-Frame-Options, etc.).</description>
+    <summary>Enterprise-grade IIS security module with WAF, rate limiting, GeoIP filtering, and automatic security header management.</summary>
+    <releaseNotes>Initial release with WAF, rate limiting, GeoIP filtering, automatic security header management, and webhook notification support.</releaseNotes>
+    <copyright>Copyright � 2025</copyright>
+    <tags>IIS Security WAF RateLimit GeoIP Module HttpModule AspNet WebSecurity Firewall</tags>
+    <repository type="git" url="https://dev.azure.com/kacosta/IISFrontGuard/_git/IISFrontGuard" />
+    <readme>README.md</readme>
+    <dependencies>
+      <group targetFramework="net48">
+        <dependency id="IPNetwork" version="1.3.2.0" />
+        <dependency id="MaxMind.Db" version="4.3.4" />
+        <dependency id="MaxMind.GeoIP2" version="5.4.1" />
+        <dependency id="Microsoft.Bcl.AsyncInterfaces" version="10.0.1" />
+        <dependency id="Microsoft.Extensions.DependencyInjection.Abstractions" version="10.0.1" />
+        <dependency id="Microsoft.Extensions.Options" version="10.0.1" />
+        <dependency id="Microsoft.Extensions.Primitives" version="10.0.1" />
+        <dependency id="System.Buffers" version="4.6.1" />
+        <dependency id="System.IO.Pipelines" version="10.0.1" />
+        <dependency id="System.Memory" version="4.6.3" />
+        <dependency id="System.Numerics.Vectors" version="4.6.1" />
+        <dependency id="System.Runtime.CompilerServices.Unsafe" version="6.1.2" />
+        <dependency id="System.Text.Encodings.Web" version="10.0.1" />
+        <dependency id="System.Text.Json" version="10.0.1" />
+        <dependency id="System.Threading.Tasks.Extensions" version="4.6.3" />
+        <dependency id="System.ValueTuple" version="4.6.1" />
+      </group>
+    </dependencies>
+  </metadata>
+  <files>
+    <!-- Library -->
+    <file src="bin\Release\IISFrontGuard.Module.dll" target="lib\net48" />
+    <file src="bin\Release\IISFrontGuard.Module.pdb" target="lib\net48" />
+    <file src="bin\Release\IISFrontGuard.Module.xml" target="lib\net48" />
+    
+    <!-- Documentation -->
+    <file src="README.md" target="" />
+    <file src="INSTALLATION_CHANGES.md" target="content" />
+    <file src="UNINSTALL_GUIDE.md" target="content" />
+    
+    <!-- Icon -->
+    <file src="icon.png" target="" />
+    
+    <!-- GeoIP Database -->
+    <file src="bin\Release\GeoLite2-Country.mmdb" target="content" />
+    <file src="bin\Release\UpdateGeoDb.bat" target="content" />
+    
+    <!-- SQL Scripts -->
+    <file src="Scripts\init.sql" target="content\Scripts" />
+    
+    <!-- Getting Started Guide -->
+    <file src="Content\GETTING_STARTED.txt" target="content" />
+    
+    <!-- Installation Scripts -->
+    <file src="tools\install.ps1" target="tools" />
+    <file src="tools\uninstall.ps1" target="tools" />
+    
+    <!-- Web.config transformation -->
+    <file src="Content\web.config.install.xdt" target="content\web.config.install.xdt" />
+  </files>
+</package>

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Just a moment...</title>
+</head>
+<body>
+    <div class="container">
+        <h1>{ROOT_DOMAIN}</h1>
+        <form method="post" action="">
+            <input type="hidden" name="__rayId" value="{RAY_ID}" />
+            <input type="hidden" name="__csrf" value="{CSRF_TOKEN}" />
+            <div>
+                <input type="checkbox" id="verifyCheckbox">
+                <label for="verifyCheckbox">No soy un robot</label>
+            </div>
+            <div>
+                <button type="submit">Verify</button>
+            </div>
+        </form>
+        <em>Version: {VERSION}</em>
+    </div>
+</body>
+</html>
