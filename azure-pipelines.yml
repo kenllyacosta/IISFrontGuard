@@ -160,14 +160,14 @@ steps:
 #   condition: and(succeeded(), in(variables['Build.SourceBranch'], 'refs/heads/master', 'refs/heads/main'))
 
 # Option 2: Publish to NuGet.org (Requires service connection named 'NuGet.org')
-# - task: NuGetCommand@2
-#   displayName: 'Push to NuGet.org'
-#   condition: and(succeeded(), in(variables['Build.SourceBranch'], 'refs/heads/master', 'refs/heads/main'))
-#   inputs:
-#     command: 'push'
-#     packagesToPush: '$(Build.ArtifactStagingDirectory)/NuGet/*.nupkg'
-#     nuGetFeedType: 'external'
-#     publishFeedCredentials: 'NuGet.org'
+- task: NuGetCommand@2
+  displayName: 'Push to NuGet.org'
+  condition: and(succeeded(), in(variables['Build.SourceBranch'], 'refs/heads/master', 'refs/heads/main'))
+  inputs:
+    command: 'push'
+    packagesToPush: '$(Build.ArtifactStagingDirectory)/NuGet/*.nupkg'
+    nuGetFeedType: 'external'
+    publishFeedCredentials: 'NuGet.org'
 
 - task: CopyFiles@2
   displayName: 'Copy Module DLLs to staging'
