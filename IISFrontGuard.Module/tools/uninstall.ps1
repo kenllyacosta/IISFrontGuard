@@ -7,187 +7,65 @@ Write-Host "   IISFrontGuard Module Uninstallation" -ForegroundColor Yellow
 Write-Host "=================================================================================" -ForegroundColor Cyan
 Write-Host ""
 
-Write-Host "Removing IISFrontGuard configurations from web.config..." -ForegroundColor Yellow
+Write-Host "NOTICE: To avoid accidental loss of application configuration during package updates, this uninstall script will NOT automatically remove entries from your web.config." -ForegroundColor Yellow
+Write-Host "If you previously added IISFrontGuard settings via the package installer, please review and remove them manually if desired. A backup of your web.config will be created if it can be located." -ForegroundColor Yellow
 Write-Host ""
 
 try {
-    # Get the project's web.config file
-    $webConfig = $project.ProjectItems | Where-Object { $_.Name -eq "Web.config" }
-    
+    # Attempt to locate the project's web.config file and create a backup only.
+    $webConfig = $project.ProjectItems | Where-Object { $_.Name -match "web.config" }
+
     if ($webConfig) {
-        $webConfigPath = $webConfig.Properties | Where-Object { $_.Name -eq "LocalPath" } | Select-Object -ExpandProperty Value
-        
-        if (Test-Path $webConfigPath) {
+        $webConfigPath = $webConfig.Properties | Where-Object { $_.Name -eq "LocalPath" } | Select-Object -ExpandProperty Value -ErrorAction SilentlyContinue
+
+        if ($webConfigPath -and (Test-Path $webConfigPath)) {
             Write-Host "Found web.config at: $webConfigPath" -ForegroundColor Gray
-            
-            # Load the web.config as XML
-            [xml]$xml = Get-Content $webConfigPath
-            
-            $configChanged = $false
-            
-            # Remove FrontGuardModule from system.webServer/modules
-            Write-Host "  ? Removing FrontGuardModule registration..." -ForegroundColor White
-            $modulesNode = $xml.configuration.'system.webServer'.modules
-            if ($modulesNode) {
-                $moduleToRemove = $modulesNode.add | Where-Object { $_.name -eq "FrontGuardModule" }
-                if ($moduleToRemove) {
-                    $modulesNode.RemoveChild($moduleToRemove) | Out-Null
-                    $configChanged = $true
-                    Write-Host "    ? FrontGuardModule removed" -ForegroundColor Green
-                }
-            }
-            
-            # Remove X-Powered-By header removal configuration
-            Write-Host "  ? Removing X-Powered-By header configuration..." -ForegroundColor White
-            $httpProtocolNode = $xml.configuration.'system.webServer'.httpProtocol
-            if ($httpProtocolNode) {
-                $customHeadersNode = $httpProtocolNode.customHeaders
-                if ($customHeadersNode) {
-                    $headerToRemove = $customHeadersNode.remove | Where-Object { $_.name -eq "X-Powered-By" }
-                    if ($headerToRemove) {
-                        $customHeadersNode.RemoveChild($headerToRemove) | Out-Null
-                        $configChanged = $true
-                        Write-Host "    ? X-Powered-By configuration removed" -ForegroundColor Green
-                    }
-                    
-                    # Remove empty customHeaders node
-                    if (-not $customHeadersNode.HasChildNodes) {
-                        $httpProtocolNode.RemoveChild($customHeadersNode) | Out-Null
-                    }
-                }
-                
-                # Remove empty httpProtocol node
-                if (-not $httpProtocolNode.HasChildNodes) {
-                    $xml.configuration.'system.webServer'.RemoveChild($httpProtocolNode) | Out-Null
-                }
-            }
-            
-            # Remove Server header configuration (requestFiltering)
-            Write-Host "  ? Removing Server header configuration..." -ForegroundColor White
-            $securityNode = $xml.configuration.'system.webServer'.security
-            if ($securityNode) {
-                $requestFilteringNode = $securityNode.requestFiltering
-                if ($requestFilteringNode -and $requestFilteringNode.removeServerHeader -eq "true") {
-                    $requestFilteringNode.RemoveAttribute("removeServerHeader")
-                    $configChanged = $true
-                    Write-Host "    ? Server header configuration removed" -ForegroundColor Green
-                    
-                    # Remove empty requestFiltering node
-                    if (-not $requestFilteringNode.HasAttributes -and -not $requestFilteringNode.HasChildNodes) {
-                        $securityNode.RemoveChild($requestFilteringNode) | Out-Null
-                    }
-                }
-                
-                # Remove empty security node
-                if (-not $securityNode.HasChildNodes) {
-                    $xml.configuration.'system.webServer'.RemoveChild($securityNode) | Out-Null
-                }
-            }
-            
-            # Remove enableVersionHeader from system.web/httpRuntime
-            Write-Host "  ? Removing ASP.NET version header configuration..." -ForegroundColor White
-            $httpRuntimeNode = $xml.configuration.'system.web'.httpRuntime
-            if ($httpRuntimeNode -and $httpRuntimeNode.enableVersionHeader -eq "false") {
-                $httpRuntimeNode.RemoveAttribute("enableVersionHeader")
-                $configChanged = $true
-                Write-Host "    ? ASP.NET version header configuration removed" -ForegroundColor Green
-            }
-            
-            # Remove IISFrontGuard connection string
-            Write-Host "  ? Removing IISFrontGuard connection string..." -ForegroundColor White
-            $connectionStringsNode = $xml.configuration.connectionStrings
-            if ($connectionStringsNode) {
-                $connStringToRemove = $connectionStringsNode.add | Where-Object { $_.name -eq "IISFrontGuard" }
-                if ($connStringToRemove) {
-                    $connectionStringsNode.RemoveChild($connStringToRemove) | Out-Null
-                    $configChanged = $true
-                    Write-Host "    ? IISFrontGuard connection string removed" -ForegroundColor Green
-                }
-                
-                # Remove empty connectionStrings node
-                if (-not $connectionStringsNode.HasChildNodes) {
-                    $xml.configuration.RemoveChild($connectionStringsNode) | Out-Null
-                }
-            }
-            
-            # Remove IISFrontGuard app settings
-            Write-Host "  ? Removing IISFrontGuard app settings..." -ForegroundColor White
-            $appSettingsNode = $xml.configuration.appSettings
-            if ($appSettingsNode) {
-                $settingsToRemove = @(
-                    "IISFrontGuard.DefaultConnectionStringName",
-                    "IISFrontGuardEncryptionKey",
-                    "IISFrontGuard.RateLimitMaxRequestsPerMinute",
-                    "IISFrontGuard.RateLimitWindowSeconds",
-                    "TrustedProxyIPs",
-                    "IISFrontGuard.Webhook.Enabled",
-                    "IISFrontGuard.Webhook.Url",
-                    "IISFrontGuard.Webhook.AuthHeader",
-                    "IISFrontGuard.Webhook.CustomHeaders",
-                    "IISFrontGuard.Webhook.FailureLogPath"
-                )
-                
-                $removedCount = 0
-                foreach ($settingKey in $settingsToRemove) {
-                    $settingToRemove = $appSettingsNode.add | Where-Object { $_.key -eq $settingKey }
-                    if ($settingToRemove) {
-                        $appSettingsNode.RemoveChild($settingToRemove) | Out-Null
-                        $removedCount++
-                    }
-                }
-                
-                if ($removedCount -gt 0) {
-                    $configChanged = $true
-                    Write-Host "    ? Removed $removedCount app settings" -ForegroundColor Green
-                }
-                
-                # Remove empty appSettings node
-                if (-not $appSettingsNode.HasChildNodes) {
-                    $xml.configuration.RemoveChild($appSettingsNode) | Out-Null
-                }
-            }
-            
-            # Save the modified web.config if changes were made
-            if ($configChanged) {
-                # Create a backup before saving
-                $backupPath = "$webConfigPath.backup_$(Get-Date -Format 'yyyyMMddHHmmss')"
-                Copy-Item $webConfigPath $backupPath
-                Write-Host ""
-                Write-Host "  ? Backup created: $backupPath" -ForegroundColor Gray
-                
-                # Save the changes
-                $xml.Save($webConfigPath)
-                Write-Host "  ? web.config updated successfully" -ForegroundColor Green
-            } else {
-                Write-Host "  ? No IISFrontGuard configurations found in web.config" -ForegroundColor Gray
-            }
+
+            # Create a timestamped backup and do NOT modify the original file to avoid accidental deletions during package updates
+            $backupPath = "$webConfigPath.backup_$(Get-Date -Format 'yyyyMMddHHmmss')"
+            Copy-Item $webConfigPath $backupPath -ErrorAction Stop
+            Write-Host "  ? Backup created: $backupPath" -ForegroundColor Gray
+
+            Write-Host ""
+            Write-Host "Manual cleanup instructions (if you want to remove IISFrontGuard settings):" -ForegroundColor Yellow
+            Write-Host "  1. Remove the 'FrontGuardModule' entry from <system.webServer><modules> if present." -ForegroundColor White
+            Write-Host "  2. Remove the IISFrontGuard connection string from <connectionStrings> (name=\"IISFrontGuard\")." -ForegroundColor White
+            Write-Host "  3. Remove the following appSettings keys if present:" -ForegroundColor White
+            Write-Host "     - IISFrontGuard.DefaultConnectionStringName" -ForegroundColor Gray
+            Write-Host "     - IISFrontGuardEncryptionKey" -ForegroundColor Gray
+            Write-Host "     - IISFrontGuard.RateLimitMaxRequestsPerMinute" -ForegroundColor Gray
+            Write-Host "     - IISFrontGuard.RateLimitWindowSeconds" -ForegroundColor Gray
+            Write-Host "     - TrustedProxyIPs" -ForegroundColor Gray
+            Write-Host "     - IISFrontGuard.Webhook.*" -ForegroundColor Gray
+            Write-Host "  4. If you removed elements, keep the original backup created above." -ForegroundColor White
+            Write-Host ""
+        } else {
+            Write-Host "web.config path not found on disk; no backup created." -ForegroundColor Gray
         }
     } else {
-        Write-Host "  ? web.config not found in project" -ForegroundColor Gray
+        Write-Host "web.config not found in project; no changes made." -ForegroundColor Gray
     }
-    
+
     Write-Host ""
     Write-Host "CLEANUP SUMMARY:" -ForegroundColor Yellow
-    Write-Host "  ? Module registration removed" -ForegroundColor White
-    Write-Host "  ? Security header configurations removed" -ForegroundColor White
-    Write-Host "  ? Connection string removed" -ForegroundColor White
-    Write-Host "  ? App settings removed" -ForegroundColor White
+    Write-Host "  ? No automated modifications performed to web.config to prevent accidental data loss." -ForegroundColor White
+    Write-Host "  ? Backup created if web.config was located." -ForegroundColor White
     Write-Host ""
-    Write-Host "MANUAL CLEANUP REQUIRED:" -ForegroundColor Yellow
-    Write-Host "  1. Database tables created by init.sql still exist" -ForegroundColor White
-    Write-Host "     ? Drop tables: SecurityEvents, WafRules, WafConditions" -ForegroundColor Gray
+    Write-Host "MANUAL CLEANUP REQUIRED (optional):" -ForegroundColor Yellow
+    Write-Host "  1. Database tables created by init.sql still exist:" -ForegroundColor White
+    Write-Host "     - Drop tables: SecurityEvents, WafRules, WafConditions" -ForegroundColor Gray
     Write-Host "  2. GeoLite2-Country.mmdb file may remain in content folder" -ForegroundColor White
     Write-Host "  3. Custom WAF rules in database should be removed manually" -ForegroundColor White
     Write-Host ""
-    Write-Host "NOTE: A backup of your web.config has been created" -ForegroundColor Cyan
+    Write-Host "NOTE: A backup of your web.config has been created if the file was found." -ForegroundColor Cyan
     Write-Host ""
-    
+
 } catch {
     Write-Host ""
-    Write-Host "ERROR: Failed to modify web.config" -ForegroundColor Red
+    Write-Host "ERROR: Failed to create backup or inspect web.config" -ForegroundColor Red
     Write-Host $_.Exception.Message -ForegroundColor Red
     Write-Host ""
-    Write-Host "Please manually remove IISFrontGuard configurations from web.config" -ForegroundColor Yellow
+    Write-Host "Please manually remove IISFrontGuard configurations from web.config if required." -ForegroundColor Yellow
     Write-Host ""
 }
 
