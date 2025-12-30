@@ -1,0 +1,186 @@
+name: $(Year:yyyy).$(Month).$(DayOfMonth)$(Rev:.r)
+
+pool:
+  name: Aslan-SelfHosted-Stg
+  demands:
+  - msbuild
+  - visualstudio
+  - vstest
+
+variables:
+  solution: '**\*.sln'
+  BuildPlatform: 'Any CPU'
+  BuildConfiguration: 'Release'
+  TestResultsDir: '$(Agent.TempDirectory)\TestResults'
+  # NuGet package version - matches build number
+  NuGetVersion: '$(Build.BuildNumber)'
+
+steps:
+- task: NuGetToolInstaller@1
+  displayName: 'Use NuGet 6.x'
+  inputs:
+    versionSpec: 6.x
+
+- task: NuGetCommand@2
+  displayName: 'NuGet restore'
+  inputs:
+    command: 'restore'
+    restoreSolution: '$(solution)'
+
+- task: bleddynrichards.Assembly-Info-Task.Assembly-Info-Task.Assembly-Info-NetFramework@3
+  displayName: 'Set Assembly Manifest Data'
+  inputs:
+    FileNames: '**\AssemblyInfo.cs'
+    Title: 'IISFrontGuard'
+    Product: 'IISFrontGuard'
+    Description: 'IIS security module for front-end protection'
+    Company: 'Asotech, SRL'
+    Trademark: 'Asotech, SRL'
+    VersionNumber: '$(Build.BuildNumber)'
+    FileVersionNumber: '$(Build.BuildNumber)'
+    InformationalVersion: '$(Build.BuildNumber)'
+
+- task: SonarCloudPrepare@4
+  displayName: 'Prepare SonarCloud analysis'
+  inputs:
+    SonarCloud: 'Sonar Service'
+    organization: 'aslan'
+    scannerMode: 'dotnet'
+    projectKey: $(projectKey)
+    projectName: 'IISFrontGuard'
+    extraProperties: |
+      sonar.cs.vstest.reportsPaths=$(TestResultsDir)\**\*.trx
+      sonar.cs.vscoveragexml.reportsPaths=$(TestResultsDir)\**\*.coveragexml
+
+- task: PowerShell@2
+  displayName: 'Install Java 11'
+  inputs:
+    targetType: 'inline'
+    script: |
+      $javaHome = "$env:AGENT_TOOLSDIRECTORY\Java\11"
+      if (Test-Path $javaHome) {
+        Write-Host "Java 11 already installed at $javaHome"
+      } else {
+        Write-Host "Downloading Java 11..."
+        $downloadUrl = "https://aka.ms/download-jdk/microsoft-jdk-11.0.21-windows-x64.zip"
+        $zipFile = "$env:TEMP\jdk-11.zip"
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $zipFile
+        Write-Host "Extracting Java 11..."
+        Expand-Archive -Path $zipFile -DestinationPath $javaHome -Force
+        Remove-Item $zipFile
+      }
+      $jdkPath = Get-ChildItem -Path $javaHome -Directory | Select-Object -First 1
+      $env:JAVA_HOME = $jdkPath.FullName
+      $env:PATH = "$($jdkPath.FullName)\bin;$env:PATH"
+      Write-Host "##vso[task.setvariable variable=JAVA_HOME]$($jdkPath.FullName)"
+      Write-Host "##vso[task.setvariable variable=PATH]$($jdkPath.FullName)\bin;$env:PATH"
+      Write-Host "Java version:"
+      & "$($jdkPath.FullName)\bin\java.exe" -version
+
+- task: VSBuild@1
+  displayName: 'Build solution'
+  inputs:
+    solution: '$(solution)'
+    platform: '$(BuildPlatform)'
+    configuration: '$(BuildConfiguration)'
+
+- task: VSTest@2
+  displayName: 'Run tests with code coverage'
+  inputs:
+    testSelector: 'testAssemblies'
+    testAssemblyVer2: |
+      **\*Tests.dll
+      !**\*TestAdapter.dll
+      !**\obj\**
+    searchFolder: '$(System.DefaultWorkingDirectory)'
+    resultsFolder: '$(TestResultsDir)'
+    codeCoverageEnabled: true
+    platform: '$(BuildPlatform)'
+    configuration: '$(BuildConfiguration)'
+    diagnosticsEnabled: true
+    collectDumpOn: 'onAbortOnly'
+    rerunFailedTests: false
+    publishRunAttachments: true
+
+- task: PublishTestResults@2
+  displayName: 'Publish test results'
+  condition: always()
+  inputs:
+    testResultsFormat: 'VSTest'
+    testResultsFiles: '$(TestResultsDir)\**\*.trx'
+    failTaskOnFailedTests: true
+    testRunTitle: 'IISFrontGuard Tests'
+
+- task: SonarCloudAnalyze@4
+  displayName: 'Run SonarCloud analysis'
+
+- task: SonarCloudPublish@4
+  displayName: 'Publish SonarCloud results'
+  inputs:
+    pollingTimeoutSec: '300'
+
+- task: WhiteSource@21
+  displayName: 'WhiteSource Scan'
+  inputs:
+    cwd: '$(System.DefaultWorkingDirectory)'
+    projectName: 'IISFrontGuard.Module'
+
+# NuGet Package Creation Steps
+- task: PowerShell@2
+  displayName: 'Update NuSpec Version'
+  inputs:
+    targetType: 'inline'
+    script: |
+      $nuspecPath = "IISFrontGuard.Module\IISFrontGuard.Module.nuspec"
+      $nuspecContent = Get-Content $nuspecPath -Raw
+      $nuspecContent = $nuspecContent -replace '<version>.*?</version>', "<version>$(NuGetVersion)</version>"
+      Set-Content -Path $nuspecPath -Value $nuspecContent
+      Write-Host "Updated NuSpec version to $(NuGetVersion)"
+
+- task: NuGetCommand@2
+  displayName: 'Create NuGet Package'
+  inputs:
+    command: 'pack'
+    packagesToPack: 'IISFrontGuard.Module\IISFrontGuard.Module.nuspec'
+    packDestination: '$(Build.ArtifactStagingDirectory)\NuGet'
+    versioningScheme: 'off'
+    buildProperties: 'version=$(NuGetVersion)'
+
+# Option 1: Publish to Azure Artifacts (Internal Feed) - DISABLED
+# - task: NuGetCommand@2
+#   displayName: 'Push to Azure Artifacts Feed'
+#   inputs:
+#     command: 'push'
+#     packagesToPush: '$(Build.ArtifactStagingDirectory)/NuGet/*.nupkg'
+#     nuGetFeedType: 'internal'
+#     publishVstsFeed: 'IISFrontGuard/IISFrontGuard-Packages'
+#   condition: and(succeeded(), in(variables['Build.SourceBranch'], 'refs/heads/master', 'refs/heads/main'))
+
+# Option 2: Publish to NuGet.org (Requires service connection named 'NuGet.org')
+# - task: NuGetCommand@2
+#   displayName: 'Push to NuGet.org'
+#   condition: and(succeeded(), in(variables['Build.SourceBranch'], 'refs/heads/master', 'refs/heads/main'))
+#   inputs:
+#     command: 'push'
+#     packagesToPush: '$(Build.ArtifactStagingDirectory)/NuGet/*.nupkg'
+#     nuGetFeedType: 'external'
+#     publishFeedCredentials: 'NuGet.org'
+
+- task: CopyFiles@2
+  displayName: 'Copy Module DLLs to staging'
+  inputs:
+    SourceFolder: '$(System.DefaultWorkingDirectory)'
+    Contents: |
+      **/IISFrontGuard.Module/bin/$(BuildConfiguration)/**/*.dll
+      **/IISFrontGuard.Module/bin/$(BuildConfiguration)/**/*.pdb
+      deploy-iisFrontGuard.ps1
+      Web.config
+    TargetFolder: '$(Build.ArtifactStagingDirectory)'
+    flattenFolders: false
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifacts'
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'IISFrontGuard-Module'
+    publishLocation: 'Container'
