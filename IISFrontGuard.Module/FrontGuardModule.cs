@@ -408,7 +408,7 @@ namespace IISFrontGuard.Module
         /// <param name="logContext">The logging context containing request metadata.</param>
         public void HandleManagedChallenge(HttpRequest request, HttpResponse response, string token, string key, RequestLogContext logContext)
         {
-            if (string.IsNullOrEmpty(token) || !IsTokenValid(token, request))
+            if (string.IsNullOrEmpty(token) || !IsTokenValid(token, request, key))
             {
                 var challengeContext = new ChallengeContext
                 {
@@ -441,7 +441,7 @@ namespace IISFrontGuard.Module
         /// <param name="logContext">The logging context containing request metadata.</param>
         public void HandleInteractiveChallenge(HttpRequest request, HttpResponse response, string token, string key, RequestLogContext logContext)
         {
-            if (string.IsNullOrEmpty(token) || !IsTokenValid(token, request))
+            if (string.IsNullOrEmpty(token) || !IsTokenValid(token, request, key))
             {
                 var challengeContext = new ChallengeContext
                 {
