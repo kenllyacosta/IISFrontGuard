@@ -110,10 +110,10 @@ DOCUMENTATION & SUPPORT
 ================================================================================
 
 For detailed documentation, visit:
-https://dev.azure.com/kacosta/IISFrontGuard
+https://github.com/kenllyacosta/IISFrontGuard
 
 For support and issues:
-https://dev.azure.com/kacosta/IISFrontGuard
+https://github.com/kenllyacosta/IISFrontGuard/issues
 
 ================================================================================
                         You're all set! Happy securing!
