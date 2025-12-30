@@ -164,6 +164,7 @@
     <Content Include="tools\install.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <None Include="tools\register_global_module.bat" />
     <None Include="tools\uninstall.ps1" />
     <None Include="UNINSTALL_GUIDE.md" />
   </ItemGroup>
