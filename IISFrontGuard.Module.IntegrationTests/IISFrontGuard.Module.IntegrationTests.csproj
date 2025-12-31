@@ -96,6 +96,7 @@
     <Compile Include="Core\RateLimitingTests.cs" />
     <Compile Include="FrontGuard\FrontGuardModuleEventHandlersTests.cs" />
     <Compile Include="FrontGuard\FrontGuardModuleIntegrationTests.cs" />
+    <Compile Include="FrontGuard\GenerateAndSetTokenEndToEndTests.cs" />
     <Compile Include="Helpers\FieldValueExtractionTests.cs" />
     <Compile Include="Helpers\TestHelpers.cs" />
     <Compile Include="Helpers\TestHttpContextFactory.cs" />
