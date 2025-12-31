@@ -5,12 +5,13 @@ using Moq;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Web;
 using System.Web.Caching;
 using System.Collections.Specialized;
-using System.Net;
 
 namespace IISFrontGuard.Module.UnitTests
 {
@@ -1108,6 +1109,10 @@ namespace IISFrontGuard.Module.UnitTests
                 .Returns(1); // 1 hour expiration
             _mockTokenCache.Setup(c => c.Get("encrypted-token"))
                 .Returns(DateTime.UtcNow.AddHours(1));
+            // Ensure Decrypt returns a token that includes the same fingerprint as generated for the request
+            var expectedFingerprint = _module.GenerateClientFingerprint(request);
+            _mockRequestLogger.Setup(r => r.Decrypt("encrypted-token", encryptionKey))
+                .Returns($"rawtoken|{expectedFingerprint}");
 
             // Act
             _module.GenerateAndSetToken(request, response, encryptionKey);
@@ -1187,5 +1192,193 @@ namespace IISFrontGuard.Module.UnitTests
         }
 
         #endregion
+
+        [Test]
+        public void BlockRequest_CompletesRequest()
+        {
+            // Arrange - use fresh mocks and module to ensure verification targets the object used by module
+            var localHttpContextAccessor = new Mock<IHttpContextAccessor>();
+            var localRequestLogger = new Mock<IRequestLogger>();
+            var localModule = new FrontGuardModule(
+                localRequestLogger.Object,
+                _mockWebhookNotifier.Object,
+                _mockGeoIPService.Object,
+                _mockWafRuleRepository.Object,
+                _mockTokenCache.Object,
+                _mockConfiguration.Object,
+                localHttpContextAccessor.Object);
+
+            var httpContext = new HttpContext(
+                new HttpRequest("test", "http://example.com", ""),
+                new HttpResponse(new StringWriter())
+            );
+            HttpContext.Current = httpContext;
+            var request = HttpContext.Current.Request;
+            var response = HttpContext.Current.Response;
+
+            var logContext = new RequestLogContext
+            {
+                RuleTriggered = 1,
+                ConnectionString = "cs",
+                RayId = "ray",
+                Iso2 = "US",
+                ActionId = 2,
+                AppId = "app"
+            };
+
+            // Act
+            localModule.BlockRequest(request, response, logContext);
+
+            // Assert
+            localRequestLogger.Verify(r => r.Enqueue(request, It.IsAny<string>(), It.IsAny<int?>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<string>()), Times.Once);
+            localHttpContextAccessor.Verify(h => h.CompleteRequest(), Times.Once);
+            Assert.AreEqual(403, response.StatusCode);
+        }
+
+        [Test]
+        public void DisplayChallengeForm_CompletesRequest()
+        {
+            // Arrange - use fresh mocks and module to ensure verification targets the object used by module
+            var localHttpContextAccessor = new Mock<IHttpContextAccessor>();
+            var localRequestLogger = new Mock<IRequestLogger>();
+            var localModule = new FrontGuardModule(
+                localRequestLogger.Object,
+                _mockWebhookNotifier.Object,
+                _mockGeoIPService.Object,
+                _mockWafRuleRepository.Object,
+                _mockTokenCache.Object,
+                _mockConfiguration.Object,
+                localHttpContextAccessor.Object);
+
+            var httpContext = new HttpContext(
+                new HttpRequest("test", "http://example.com", ""),
+                new HttpResponse(new StringWriter())
+            );
+            HttpContext.Current = httpContext;
+            var request = HttpContext.Current.Request;
+            var response = HttpContext.Current.Response;
+
+            var logContext = new RequestLogContext
+            {
+                RuleTriggered = 1,
+                ConnectionString = "cs",
+                RayId = "ray",
+                Iso2 = "US",
+                ActionId = 3,
+                AppId = "app"
+            };
+
+            var challengeContext = new ChallengeContext
+            {
+                Request = request,
+                Response = response,
+                Token = null,
+                Key = "key",
+                LogContext = logContext,
+                HtmlGenerator = localModule.GenerateHTMLInteractiveChallenge
+            };
+
+            // Act
+            localModule.DisplayChallengeForm(challengeContext);
+
+            // Assert
+            localRequestLogger.Verify(r => r.Enqueue(request, It.IsAny<string>(), It.IsAny<int?>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<string>()), Times.Once);
+            localHttpContextAccessor.Verify(h => h.CompleteRequest(), Times.Once);
+            Assert.AreEqual(403, response.StatusCode);
+        }
+
+        [Test]
+        public void HandleRuleAction_ThrowsWhenEncryptionKeyMissing()
+        {
+            // Arrange
+            var config = new Mock<IConfigurationProvider>();
+            config.Setup(c => c.GetAppSetting("IISFrontGuardEncryptionKey")).Returns((string)null);
+            config.Setup(c => c.GetAppSettingAsBool(It.IsAny<string>(), It.IsAny<bool>())).Returns(false);
+
+            var localModule = new FrontGuardModule(
+                _mockRequestLogger.Object,
+                _mockWebhookNotifier.Object,
+                _mockGeoIPService.Object,
+                _mockWafRuleRepository.Object,
+                _mockTokenCache.Object,
+                config.Object,
+                _mockHttpContextAccessor.Object);
+
+            var req = CreateMockHttpRequest();
+            var resp = new HttpResponse(new StringWriter());
+            var rule = new WafRule { Id = 1, ActionId = 1, AppId = Guid.NewGuid() };
+
+            // Act & Assert
+            Assert.Throws<InvalidOperationException>(() => localModule.HandleRuleAction(rule, req, resp, "ray", "US"));
+        }
+
+        [Test]
+        public void HandleRuleAction_Block_SendsWebhookWhenEnabled()
+        {
+            // Arrange
+            var config = new Mock<IConfigurationProvider>();
+            config.Setup(c => c.GetAppSetting("IISFrontGuardEncryptionKey")).Returns("key");
+            config.Setup(c => c.GetAppSettingAsBool("IISFrontGuard.Webhook.Enabled", false)).Returns(true);
+            config.Setup(c => c.GetAppSettingAsBool(It.IsAny<string>(), It.IsAny<bool>())).Returns(true);
+
+            var webhook = new Mock<IWebhookNotifier>();
+            var httpAccessor = new Mock<IHttpContextAccessor>();
+            var requestLogger = new Mock<IRequestLogger>();
+
+
+            var localModule = new FrontGuardModule(
+                requestLogger.Object,
+                webhook.Object,
+                _mockGeoIPService.Object,
+                _mockWafRuleRepository.Object,
+                _mockTokenCache.Object,
+                config.Object,
+                httpAccessor.Object);
+
+            var httpContext = new HttpContext(new HttpRequest("test","http://example.com",""), new HttpResponse(new StringWriter()));
+            httpAccessor.Setup(h => h.Current).Returns(httpContext);
+            httpAccessor.Setup(h => h.CompleteRequest());
+
+            var req = httpContext.Request;
+            var resp = httpContext.Response;
+            var rule = new WafRule { Id = 2, ActionId = 2, Nombre = "blockit", Prioridad = 1, AppId = Guid.NewGuid(), Habilitado = true };
+
+            // Act
+            localModule.HandleRuleAction(rule, req, resp, "ray", "US");
+
+            // Assert
+            webhook.Verify(w => w.EnqueueSecurityEvent(It.IsAny<SecurityEvent>()), Times.Once);
+            requestLogger.Verify(r => r.Enqueue(req, It.IsAny<string>(), It.IsAny<int?>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<string>()), Times.Once);
+        }
+
+        [Test]
+        public void HandleRuleAction_Challenge_SendsWebhookWhenEnabled()
+        {
+            // Arrange
+            var config = new Mock<IConfigurationProvider>();
+            config.Setup(c => c.GetAppSetting("IISFrontGuardEncryptionKey")).Returns("key");
+            config.Setup(c => c.GetAppSettingAsBool("IISFrontGuard.Webhook.Enabled", false)).Returns(true);
+
+            var webhook = new Mock<IWebhookNotifier>();
+            var requestLogger = new Mock<IRequestLogger>();
+            var localModule = new FrontGuardModule(
+                requestLogger.Object,
+                webhook.Object,
+                _mockGeoIPService.Object,
+                _mockWafRuleRepository.Object,
+                _mockTokenCache.Object,
+                config.Object,
+                _mockHttpContextAccessor.Object);
+
+            var req = CreateMockHttpRequest();
+            var resp = new HttpResponse(new StringWriter());
+            var rule = new WafRule { Id = 3, ActionId = 3, Nombre = "challenge", Prioridad = 10, AppId = Guid.NewGuid(), Habilitado = true };
+
+            // Act
+            localModule.HandleRuleAction(rule, req, resp, "ray", "US");
+
+            // Assert
+            webhook.Verify(w => w.EnqueueSecurityEvent(It.IsAny<SecurityEvent>()), Times.Once);
+        }
     }
 }
