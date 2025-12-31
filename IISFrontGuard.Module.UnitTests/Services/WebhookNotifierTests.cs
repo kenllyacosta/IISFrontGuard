@@ -300,6 +300,64 @@ namespace IISFrontGuard.Module.UnitTests.Services
             Assert.True(File.Exists(nonexistentPath));
         }
 
+        [Test]
+        public async Task CustomHeaders_AreIncluded_InOutgoingRequest()
+        {
+            // Arrange
+            SetAppConfig("IISFrontGuard.Webhook.Enabled", "true");
+            SetAppConfig("IISFrontGuard.Webhook.Url", _webhookUrl);
+
+            // Add custom headers (one value contains a colon)
+            SetAppConfig("IISFrontGuard.Webhook.CustomHeaders", "X-Custom-1:Value1;X-Custom-2:Value:With:Colons");
+
+            var securityEvent = new SecurityEvent
+            {
+                Timestamp = DateTime.UtcNow,
+                EventType = "TEST_CUSTOM_HEADERS",
+                Severity = "info",
+                RayId = "ray-456",
+                ClientIp = "127.0.0.1",
+                CountryCode = "US",
+                UserAgent = "UnitTest/1.0",
+                HostName = "localhost",
+                Url = "/webhook/",
+                HttpMethod = "POST",
+                RuleId = 2,
+                RuleName = "TestRule2",
+                Description = "Test headers",
+                AdditionalData = null
+            };
+
+            // Act
+            WebhookNotifier.EnqueueSecurityEvent(securityEvent, true);
+
+            // Give some time for request to be processed by the mock server
+            await Task.Delay(2000);
+
+            // Assert
+            Assert.IsTrue(_receivedCustomHeaders.ContainsKey("X-Custom-1"));
+            Assert.AreEqual("Value1", _receivedCustomHeaders["X-Custom-1"]);
+            Assert.IsTrue(_receivedCustomHeaders.ContainsKey("X-Custom-2"));
+            Assert.AreEqual("Value:With:Colons", _receivedCustomHeaders["X-Custom-2"]);
+        }
+
+        [Test]
+        public void ConfigureRequestHeaders_AddsAuthorizationHeader_FromConfig()
+        {
+            // Arrange
+            SetAppConfig("IISFrontGuard.Webhook.AuthHeader", "Bearer TEST_TOKEN");
+
+            var request = (HttpWebRequest)WebRequest.Create("http://localhost/");
+
+            // Act - invoke private ConfigureRequestHeaders via reflection
+            var method = typeof(WebhookNotifier).GetMethod("ConfigureRequestHeaders", BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.IsNotNull(method, "ConfigureRequestHeaders method not found");
+            method.Invoke(null, new object[] { request });
+
+            // Assert
+            Assert.AreEqual("Bearer TEST_TOKEN", request.Headers["Authorization"]);
+        }
+
         private static void SetAppConfig(string key, string value)
         {
             ConfigurationManager.AppSettings[key] = value;
