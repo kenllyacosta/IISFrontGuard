@@ -26,7 +26,7 @@ namespace IISFrontGuard.Module.Abstractions
         /// <returns>True if the IP is within any configured range; otherwise, false.</returns>
         public bool IsInIp(string ipString)
         {
-            if (!IPAddress.TryParse(ipString, out var ip) || ipString == "::1")
+            if (!IPAddress.TryParse(ipString, out var ip))
                 return false;
 
             return IsInIp(ip);
@@ -40,8 +40,14 @@ namespace IISFrontGuard.Module.Abstractions
         public bool IsInIp(IPAddress ip)
         {
             for (int i = 0; i < _networks.Length; i++)
+            {
+                // Skip comparison if address families don't match (e.g., IPv4 network vs IPv6 address)
+                if (_networks[i].Network.AddressFamily != ip.AddressFamily)
+                    continue;
+
                 if (IPNetwork.Contains(_networks[i], ip))
                     return true;
+            }
 
             return false;
         }
