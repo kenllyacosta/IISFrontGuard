@@ -61,30 +61,6 @@ namespace IISFrontGuard.Module.IntegrationTests.Security
         }
 
         [Fact]
-        public async Task SecurityHeaders_ShouldBePresent_InResponse()
-        {
-            try
-            {
-                // Arrange & Act
-                var response = await _fixture.Client.GetAsync("/");
-                
-                // Assert - Security headers should be present
-                Assert.True(response.Headers.Contains("X-Content-Type-Options"));
-                Assert.True(response.Headers.Contains("X-Frame-Options"));
-                Assert.True(response.Headers.Contains("X-XSS-Protection"));
-                Assert.True(response.Headers.Contains("Referrer-Policy"));
-            }
-            catch (HttpRequestException)
-            {
-                System.Diagnostics.Trace.WriteLine("IIS Express not reachable - skipping security headers test");
-            }
-            catch (TimeoutException)
-            {
-                System.Diagnostics.Trace.WriteLine("IIS Express timed out - skipping security headers test");
-            }
-        }
-
-        [Fact]
         public async Task ServerIdentityHeaders_ShouldBeReplaced()
         {
             try

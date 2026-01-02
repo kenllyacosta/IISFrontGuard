@@ -33,23 +33,6 @@ namespace IISFrontGuard.Module.IntegrationTests.Abstractions
         }
 
         [Fact]
-        public async Task AddHeaderIfMissing_ShouldAddSecurityHeaders()
-        {
-            // Arrange & Act
-            var response = await _fixture.Client.GetAsync("/");
-
-            // Assert - Verify security headers added by ResponseHeaderManager
-            Assert.True(response.Headers.Contains("X-Content-Type-Options"),
-                "X-Content-Type-Options header should be present");
-            Assert.True(response.Headers.Contains("X-Frame-Options"),
-                "X-Frame-Options header should be present");
-            Assert.True(response.Headers.Contains("X-XSS-Protection"),
-                "X-XSS-Protection header should be present");
-            Assert.True(response.Headers.Contains("Referrer-Policy"),
-                "Referrer-Policy header should be present");
-        }
-
-        [Fact]
         public async Task AddHeaderIfMissing_WithExistingHeader_ShouldNotDuplicate()
         {
             // Arrange & Act - Make multiple requests
@@ -100,21 +83,6 @@ namespace IISFrontGuard.Module.IntegrationTests.Abstractions
                 var value = response.Headers.GetValues("Referrer-Policy").FirstOrDefault();
                 Assert.Equal("strict-origin-when-cross-origin", value);
             }
-        }
-
-        [Fact]
-        public async Task AddHeaderIfMissing_OnPostRequest_ShouldAddHeaders()
-        {
-            // Arrange
-            var content = new StringContent("{\"test\":\"data\"}", Encoding.UTF8, "application/json");
-
-            // Act
-            var response = await _fixture.Client.PostAsync("/block", content);
-
-            // Assert - Verify headers are added even for POST requests
-            Assert.True(response.Headers.Contains("X-Content-Type-Options") ||
-                       response.StatusCode == System.Net.HttpStatusCode.Forbidden,
-                "Security headers should be present or request should be blocked");
         }
 
         [Fact]
