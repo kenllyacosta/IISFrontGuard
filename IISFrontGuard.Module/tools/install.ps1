@@ -217,14 +217,5 @@ Write-Host "  2. Update connection string in web.config" -ForegroundColor White
 Write-Host "  3. Change IISFrontGuardEncryptionKey to a secure value" -ForegroundColor White
 Write-Host "  4. Review web.config settings" -ForegroundColor White
 Write-Host ""
-Write-Host "SECURITY HEADERS:" -ForegroundColor Yellow
-Write-Host "  The module automatically adds security headers including:" -ForegroundColor White
-Write-Host "  ? X-Content-Type-Options: nosniff" -ForegroundColor Gray
-Write-Host "  ? X-Frame-Options: SAMEORIGIN" -ForegroundColor Gray
-Write-Host "  ? X-XSS-Protection: 1; mode=block" -ForegroundColor Gray
-Write-Host "  ? Referrer-Policy: strict-origin-when-cross-origin" -ForegroundColor Gray
-Write-Host "  ? Content-Security-Policy (for HTML responses)" -ForegroundColor Gray
-Write-Host "  ? Strict-Transport-Security (for HTTPS only)" -ForegroundColor Gray
-Write-Host ""
 Write-Host "Please see GETTING_STARTED.txt for detailed instructions." -ForegroundColor Cyan
 Write-Host "=================================================================================" -ForegroundColor Cyan
