@@ -160,7 +160,7 @@ namespace IISFrontGuard.Module
                         AdditionalData = new { max_requests = rateLimitMaxRequestsPerMinute, window_seconds = rateLimitWindowSeconds }
                     });
 
-                response.StatusCode = 429;
+                response.StatusCode = 200;
                 response.ContentType = ContentTypeTextHtml;
                 response.Write(GenerateHTMLRateLimitPage(request.Url.Host, rayId));
                 _httpContextAccessor.CompleteRequest();
@@ -398,7 +398,7 @@ namespace IISFrontGuard.Module
         {
             _requestLogger.Enqueue(request, logContext.ConnectionString, logContext.RuleTriggered, logContext.RayId, logContext.Iso2, logContext.ActionId, logContext.AppId);
             response.ContentType = ContentTypeTextHtml;
-            response.StatusCode = 403;
+            response.StatusCode = 200;
             response.Write(GenerateHTMLUserBlockedPage(request.Url.Host, logContext.RayId));
             _httpContextAccessor.CompleteRequest();
         }
@@ -496,7 +496,7 @@ namespace IISFrontGuard.Module
         {
             var cs = GetConnectionString(context.Request);
             _requestLogger.Enqueue(context.Request, cs, context.LogContext.RuleTriggered, context.LogContext.RayId, context.LogContext.Iso2, context.LogContext.ActionId, context.LogContext.AppId);
-            context.Response.StatusCode = 403;
+            context.Response.StatusCode = 200;
             context.Response.ContentType = ContentTypeTextHtml;
 
             var csrfToken = GenerateCsrfToken(context.LogContext.RayId);
@@ -532,7 +532,7 @@ namespace IISFrontGuard.Module
 
             var cs = GetConnectionString(context.Request);
             _requestLogger.Enqueue(context.Request, cs, context.LogContext.RuleTriggered, context.LogContext.RayId, context.LogContext.Iso2, context.LogContext.ActionId, context.LogContext.AppId);
-            context.Response.StatusCode = 403;
+            context.Response.StatusCode = 200;
             context.Response.ContentType = ContentTypeTextHtml;
             var csrfToken = GenerateCsrfToken(context.LogContext.RayId);
             context.Response.Write(context.HtmlGenerator(context.Request.Url.Host, context.LogContext.RayId, csrfToken));

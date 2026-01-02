@@ -107,7 +107,7 @@ namespace IISFrontGuard.Module.IntegrationTests.FrontGuard
             module.HandleRuleAction(rule, req, resp, "ray", "US");
             webhook.Verify(x => x.EnqueueSecurityEvent(It.Is<SecurityEvent>(e => e.EventType == SecurityEventTypes.RequestBlocked)), Times.Once);
             logger.Verify(x => x.Enqueue(req, It.IsAny<string>(), 1, "ray", "US", 2, rule.AppId.ToString()), Times.Once);
-            Assert.Equal(403, resp.StatusCode);
+            Assert.Equal(200, resp.StatusCode);
         }
 
         [Fact]
@@ -126,7 +126,7 @@ namespace IISFrontGuard.Module.IntegrationTests.FrontGuard
             module.HandleRuleAction(rule, req, resp, "ray", "US");
             webhook.Verify(x => x.EnqueueSecurityEvent(It.Is<SecurityEvent>(e => e.EventType == SecurityEventTypes.ChallengeIssued)), Times.Once);
             logger.Verify(x => x.Enqueue(req, It.IsAny<string>(), 1, "ray", "US", 3, rule.AppId.ToString()), Times.Once);
-            Assert.Equal(403, resp.StatusCode);
+            Assert.Equal(200, resp.StatusCode);
         }
 
         [Fact]
@@ -145,7 +145,7 @@ namespace IISFrontGuard.Module.IntegrationTests.FrontGuard
             module.HandleRuleAction(rule, req, resp, "ray", "US");
             webhook.Verify(x => x.EnqueueSecurityEvent(It.Is<SecurityEvent>(e => e.EventType == SecurityEventTypes.ChallengeIssued)), Times.Once);
             logger.Verify(x => x.Enqueue(req, It.IsAny<string>(), 1, "ray", "US", 4, rule.AppId.ToString()), Times.Once);
-            Assert.Equal(403, resp.StatusCode);
+            Assert.Equal(200, resp.StatusCode);
         }
 
         [Fact]
@@ -170,7 +170,7 @@ namespace IISFrontGuard.Module.IntegrationTests.FrontGuard
             var ctx = new RequestLogContext { ConnectionString = "cs", RuleTriggered = 1, RayId = "ray", Iso2 = "US", ActionId = 2, AppId = "app" };
             module.BlockRequest(req, resp, ctx);
             logger.Verify(x => x.Enqueue(req, "cs", 1, "ray", "US", 2, "app"), Times.Once);
-            Assert.Equal(403, resp.StatusCode);
+            Assert.Equal(200, resp.StatusCode);
             Assert.Contains("Access Denied", resp.Output.ToString());
         }
 
@@ -188,7 +188,7 @@ namespace IISFrontGuard.Module.IntegrationTests.FrontGuard
             // GET: should display form
 
             module.HandleManagedChallenge(req, resp, null, "key", ctx);
-            Assert.Equal(403, resp.StatusCode);
+            Assert.Equal(200, resp.StatusCode);
 
             cache.Setup(x => x.Get("CSRF_ray")).Returns("token");
             module.HandleManagedChallenge(req, resp, null, "key", ctx);
@@ -209,7 +209,7 @@ namespace IISFrontGuard.Module.IntegrationTests.FrontGuard
             var ctx = new RequestLogContext { ConnectionString = "cs", RuleTriggered = 1, RayId = "ray", Iso2 = "US", ActionId = 3, AppId = "app" };
             
             module.HandleManagedChallenge(req, resp, null, "key", ctx);
-            Assert.Equal(403, resp.StatusCode);
+            Assert.Equal(200, resp.StatusCode);
 
             cache.Setup(x => x.Get("CSRF_ray")).Returns("token");
             module.HandleManagedChallenge(req, resp, null, "key", ctx);
@@ -425,7 +425,7 @@ namespace IISFrontGuard.Module.IntegrationTests.FrontGuard
             var ctx = new RequestLogContext { ConnectionString = "cs", RuleTriggered = 1, RayId = "ray", Iso2 = "US", ActionId = 3, AppId = "app" };
 
             module.HandleInteractiveChallenge(req, resp, null, "key", ctx);
-            Assert.Equal(403, resp.StatusCode);
+            Assert.Equal(200, resp.StatusCode);
 
             cache.Setup(x => x.Get("CSRF_ray")).Returns("token");
             module.HandleInteractiveChallenge(req, resp, null, "key", ctx);
@@ -445,7 +445,7 @@ namespace IISFrontGuard.Module.IntegrationTests.FrontGuard
             
             // GET: should display form
             module.HandleInteractiveChallenge(req, resp, null, "key", ctx);
-            Assert.Equal(403, resp.StatusCode);
+            Assert.Equal(200, resp.StatusCode);
             
             // POST: should process post            
             cache.Setup(x => x.Get("CSRF_ray")).Returns("token");
@@ -474,7 +474,7 @@ namespace IISFrontGuard.Module.IntegrationTests.FrontGuard
             cache.Setup(x => x.Get("CSRF_ray")).Returns("token");
             module.ProcessChallengePostRequest(ctx);
 
-            Assert.Equal(403, resp.StatusCode);
+            Assert.Equal(200, resp.StatusCode);
         }
 
         [Fact]

@@ -149,7 +149,7 @@ namespace IISFrontGuard.Module.IntegrationTests.WAF
             module.HandleRuleAction(rule, request, response, rayId, "US");
 
             // Assert - Should not throw or block
-            Assert.NotEqual(403, response.StatusCode);
+            Assert.NotEqual(200, response.StatusCode);
         }
 
         public void Dispose()

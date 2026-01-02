@@ -257,7 +257,7 @@ namespace IISFrontGuard.Module.IntegrationTests.Abstractions
             var statusCode = (int)response.StatusCode;
             
             // Whether blocked (403) or successful, headers should be added
-            if (statusCode == 403)
+            if (statusCode == 200)
             {
                 Assert.True(response.Headers.Contains("X-Content-Type-Options") || 
                            response.Headers.Contains("X-Frame-Options"),
