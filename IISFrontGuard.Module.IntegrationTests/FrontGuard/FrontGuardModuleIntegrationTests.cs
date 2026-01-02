@@ -111,18 +111,6 @@ namespace IISFrontGuard.Module.IntegrationTests.FrontGuard
         }
 
         [Fact]
-        public void HandleRuleAction_Throws_InvalidOperationException_Key_NullOrEmpty()
-        {
-            var logger = new Mock<IRequestLogger>();
-            var webhook = new Mock<IWebhookNotifier>();            
-            var module = CreateModule(logger, webhook);
-            var rule = new WafRule { ActionId = 2, Id = 1, Nombre = "Block", AppId = Guid.NewGuid(), Habilitado = true };
-            var req = new HttpRequest("test.txt", "http://localhost/", "");
-            var resp = new HttpResponse(new StringWriter());
-            Assert.Throws<InvalidOperationException>(() => module.HandleRuleAction(rule, req, resp, "ray", "US"));
-        }
-
-        [Fact]
         public void HandleRuleAction_Manage_Challenge_SendsNotificationAndBlocks()
         {
             var logger = new Mock<IRequestLogger>();

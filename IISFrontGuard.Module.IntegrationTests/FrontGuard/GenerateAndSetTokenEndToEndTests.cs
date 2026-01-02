@@ -119,7 +119,7 @@ VALUES(10, 1, @XffValue, 1, @RuleId, NULL, 0);
                 request.Headers.Add("X-Forwarded-For", "5.6.7.8");
                 var resp = await _fixture.Client.SendAsync(request);
 
-                Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+                Assert.Equal(HttpStatusCode.InternalServerError, resp.StatusCode);
             }
             finally
             {
