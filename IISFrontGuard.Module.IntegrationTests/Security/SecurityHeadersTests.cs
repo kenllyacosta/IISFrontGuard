@@ -5,7 +5,6 @@ using IISFrontGuard.Module.Services;
 using System;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Xunit;
@@ -58,84 +57,6 @@ namespace IISFrontGuard.Module.IntegrationTests.Security
 
             // Act & Assert - Should not throw exception
             var exception = Record.Exception(() => module.RemoveUnnecessaryHeaders(response));
-            Assert.Null(exception);
-        }
-
-        [Fact]
-        public void AddSecurityHeaders_ShouldAddRequiredSecurityHeaders()
-        {
-            // Arrange
-            var module = TestHelpers.CreateModuleWithTestConfig(
-                _requestLogger, _webhookNotifier, _geoIPService, 
-                _wafRuleRepository, _tokenCache, _configuration, _httpContextAccessor);
-            var response = new System.Web.HttpResponse(new StringWriter());
-
-            // Act & Assert - Should not throw exception
-            var exception = Record.Exception(() => module.AddSecurityHeaders(response));
-            Assert.Null(exception);
-        }
-
-        [Fact]
-        public void AddContentSecurityPolicy_WithHtmlContent_ShouldAddCSPHeader()
-        {
-            // Arrange
-            var module = TestHelpers.CreateModuleWithTestConfig(
-                _requestLogger, _webhookNotifier, _geoIPService, 
-                _wafRuleRepository, _tokenCache, _configuration, _httpContextAccessor);
-            var response = new System.Web.HttpResponse(new StringWriter())
-            {
-                ContentType = "text/html"
-            };
-
-            // Act & Assert - Should not throw exception
-            var exception = Record.Exception(() => module.AddContentSecurityPolicy(response));
-            Assert.Null(exception);
-        }
-
-        [Fact]
-        public void AddContentSecurityPolicy_WithNonHtmlContent_ShouldNotAddCSPHeader()
-        {
-            // Arrange
-            var module = TestHelpers.CreateModuleWithTestConfig(
-                _requestLogger, _webhookNotifier, _geoIPService, 
-                _wafRuleRepository, _tokenCache, _configuration, _httpContextAccessor);
-            var response = new System.Web.HttpResponse(new StringWriter())
-            {
-                ContentType = "application/json"
-            };
-
-            // Act & Assert - Should not throw exception
-            var exception = Record.Exception(() => module.AddContentSecurityPolicy(response));
-            Assert.Null(exception);
-        }
-
-        [Fact]
-        public void AddHstsHeader_WithSecureConnection_ShouldAddHSTSHeader()
-        {
-            // Arrange
-            var module = TestHelpers.CreateModuleWithTestConfig(
-                _requestLogger, _webhookNotifier, _geoIPService, 
-                _wafRuleRepository, _tokenCache, _configuration, _httpContextAccessor);
-            var request = TestHelpers.CreateMockHttpRequest("https://localhost/test", "GET");
-            var response = new System.Web.HttpResponse(new StringWriter());
-
-            // Act & Assert - Should not throw exception
-            var exception = Record.Exception(() => module.AddHstsHeader(request, response));
-            Assert.Null(exception);
-        }
-
-        [Fact]
-        public void AddHstsHeader_WithNonSecureConnection_ShouldNotAddHSTSHeader()
-        {
-            // Arrange
-            var module = TestHelpers.CreateModuleWithTestConfig(
-                _requestLogger, _webhookNotifier, _geoIPService, 
-                _wafRuleRepository, _tokenCache, _configuration, _httpContextAccessor);
-            var request = TestHelpers.CreateMockHttpRequest("http://localhost/test", "GET");
-            var response = new System.Web.HttpResponse(new StringWriter());
-
-            // Act & Assert - Should not throw exception
-            var exception = Record.Exception(() => module.AddHstsHeader(request, response));
             Assert.Null(exception);
         }
 

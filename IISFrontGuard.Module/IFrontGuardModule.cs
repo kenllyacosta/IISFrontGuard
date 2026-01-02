@@ -1,5 +1,4 @@
-﻿using IISFrontGuard.Module.Abstractions;
-using IISFrontGuard.Module.Models;
+﻿using IISFrontGuard.Module.Models;
 using System;
 using System.Collections.Generic;
 using System.Web;
@@ -12,18 +11,6 @@ namespace IISFrontGuard.Module
     public interface IFrontGuardModule
     {
         /// <summary>
-        /// Adds Content Security Policy header to HTML responses.
-        /// </summary>
-        /// <param name="response">The HTTP response.</param>
-        void AddContentSecurityPolicy(HttpResponse response);
-
-        /// <summary>
-        /// Adds Content Security Policy header to HTML responses using an abstraction.
-        /// </summary>
-        /// <param name="response">The response header manager.</param>
-        void AddContentSecurityPolicy(IResponseHeaderManager response);
-
-        /// <summary>
         /// Creates an HTTP cookie for the clearance token.
         /// </summary>
         /// <param name="newToken">The clearance token value.</param>
@@ -31,31 +18,6 @@ namespace IISFrontGuard.Module
         /// <param name="request">The HTTP request.</param>
         /// <returns>An HTTP cookie configured with secure settings.</returns>
         HttpCookie AddCookie(string newToken, DateTime expirationTime, HttpRequest request);
-
-        /// <summary>
-        /// Adds HTTP Strict Transport Security (HSTS) header for HTTPS connections.
-        /// </summary>
-        /// <param name="request">The HTTP request.</param>
-        /// <param name="response">The HTTP response.</param>
-        void AddHstsHeader(HttpRequest request, HttpResponse response);
-
-        /// <summary>
-        /// Adds HTTP Strict Transport Security (HSTS) header for HTTPS connections using an abstraction.
-        /// </summary>
-        /// <param name="response">The response header manager.</param>
-        void AddHstsHeader(IResponseHeaderManager response);
-
-        /// <summary>
-        /// Adds security-related HTTP headers to the response.
-        /// </summary>
-        /// <param name="response">The HTTP response.</param>
-        void AddSecurityHeaders(HttpResponse response);
-
-        /// <summary>
-        /// Adds security-related HTTP headers to the response using an abstraction.
-        /// </summary>
-        /// <param name="response">The response header manager.</param>
-        void AddSecurityHeaders(IResponseHeaderManager response);
 
         /// <summary>
         /// Adds a clearance token to the cache with the specified expiration time.

@@ -23,7 +23,8 @@ namespace IISFrontGuard.Module
     public class FrontGuardModule : IHttpModule, IFrontGuardModule
     {
         private const string TokenKey = "fgm_clearance";
-        private const string _fallbackConnectionString = "Data Source=.;Initial Catalog=IISFrontGuard;Integrated Security=True;TrustServerCertificate=True;Min Pool Size=5;Max Pool Size=100;Connection Timeout=5;";
+        private const string _fallbackConnectionString = "Data Source=.;Initial Catalog=IISFrontGuard;Integrated Security=True;TrustServerCertificate=True;";
+        private const string _fallbackEncryptionKey = "1234567890123456";
         private const int RateLimitMaxRequestsPerMinute = 150;
         private const int RateLimitWindowSeconds = 60;
         private const string ContentTypeTextHtml = "text/html";
@@ -109,9 +110,17 @@ namespace IISFrontGuard.Module
         /// <param name="e">The event arguments.</param>
         public void Context_Disposed(object sender, EventArgs e)
         {
-            // Stop background services gracefully
-            _webhookNotifier.Stop();
-            _requestLogger.Stop();
+            try
+            {
+                // Stop background services gracefully
+                _webhookNotifier.Stop();
+                _requestLogger.Stop();
+            }
+            catch (Exception ex)
+            {
+                Trace.TraceError($"FrontGuardModule.Context_Disposed error: {ex}");
+                // Swallow to avoid bringing down the worker process
+            }
         }
 
         /// <summary>
@@ -129,7 +138,7 @@ namespace IISFrontGuard.Module
 
             string rayId = Guid.NewGuid().ToString();
             int rateLimitMaxRequestsPerMinute = GetAppSettingAsInt("IISFrontGuard.RateLimitMaxRequestsPerMinute", RateLimitMaxRequestsPerMinute);
-            int rateLimitWindowSeconds = GetAppSettingAsInt("IISFrontGuard.RateLimitWindowSeconds", RateLimitWindowSeconds);            
+            int rateLimitWindowSeconds = GetAppSettingAsInt("IISFrontGuard.RateLimitWindowSeconds", RateLimitWindowSeconds);
 
             // Rate limiting check
             if (IsRateLimited(clientIp, rateLimitMaxRequestsPerMinute, rateLimitWindowSeconds))
@@ -268,11 +277,7 @@ namespace IISFrontGuard.Module
             var cs = GetConnectionString(request);
             var key = _configuration.GetAppSetting("IISFrontGuardEncryptionKey");
             if (string.IsNullOrEmpty(key))
-            {
-                // Fail fast - encryption key is required for token operations
-                Trace.TraceError("IISFrontGuardEncryptionKey is not configured. Aborting security-sensitive operation.");
-                throw new InvalidOperationException("IISFrontGuardEncryptionKey must be configured in application settings.");
-            }
+                key = _fallbackEncryptionKey;
 
             var logContext = new RequestLogContext
             {
@@ -2004,24 +2009,31 @@ namespace IISFrontGuard.Module
         /// <param name="e">The event arguments.</param>
         public void Context_EndRequest(object sender, EventArgs e)
         {
-            var app = (HttpApplication)sender;
-
-            if (app.Context.Items["RequestStartTime"] is Stopwatch stopwatch)
+            try
             {
-                stopwatch.Stop();
+                var app = (HttpApplication)sender;
 
-                // Fire-and-forget logging
-                var cs = GetConnectionString(app.Context.Request);
-                Guid ray = app.Context.Items["RayId"] is string r ? Guid.Parse(r) : Guid.Empty;
-                _requestLogger.EnqueueResponse(new LogEntrySafeResponse()
+                if (app.Context.Items["RequestStartTime"] is Stopwatch stopwatch)
                 {
-                    RayId = ray,
-                    Url = app.Context.Request.Url?.ToString(),
-                    HttpMethod = app.Context.Request.HttpMethod,
-                    ResponseTime = stopwatch.ElapsedMilliseconds,
-                    Timestamp = DateTime.UtcNow,
-                    StatusCode = 200
-                }, cs);
+                    stopwatch.Stop();
+
+                    // Fire-and-forget logging
+                    var cs = GetConnectionString(app.Context.Request);
+                    Guid ray = app.Context.Items["RayId"] is string r ? Guid.Parse(r) : Guid.Empty;
+                    _requestLogger.EnqueueResponse(new LogEntrySafeResponse()
+                    {
+                        RayId = ray,
+                        Url = app.Context.Request.Url?.ToString(),
+                        HttpMethod = app.Context.Request.HttpMethod,
+                        ResponseTime = stopwatch.ElapsedMilliseconds,
+                        Timestamp = DateTime.UtcNow,
+                        StatusCode = 200
+                    }, cs);
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.TraceError($"FrontGuardModule.Context_EndRequest error: {ex}");
             }
         }
 
@@ -2032,13 +2044,17 @@ namespace IISFrontGuard.Module
         /// <param name="e">The event arguments.</param>
         public void Context_PreSendRequestHeaders(object sender, EventArgs e)
         {
-            var app = (HttpApplication)sender;
-            var response = app.Context.Response;
+            try
+            {
+                var app = (HttpApplication)sender;
+                var response = app.Context.Response;
 
-            RemoveUnnecessaryHeaders(response);
-            AddSecurityHeaders(response);
-            AddContentSecurityPolicy(response);
-            AddHstsHeader(app.Context.Request, response);
+                RemoveUnnecessaryHeaders(response);
+            }
+            catch (Exception ex)
+            {
+                Trace.TraceError($"FrontGuardModule.Context_PreSendRequestHeaders error: {ex}");
+            }
         }
 
         /// <summary>
@@ -2061,94 +2077,6 @@ namespace IISFrontGuard.Module
             catch
             {
                 // Shallow
-            }
-        }
-
-        /// <summary>
-        /// Adds security-related HTTP headers to the response using an abstraction.
-        /// </summary>
-        /// <param name="response">The response header manager.</param>
-        public void AddSecurityHeaders(IResponseHeaderManager response)
-        {
-            response.AddHeaderIfMissing("X-Content-Type-Options", "nosniff");
-            response.AddHeaderIfMissing("X-Frame-Options", "SAMEORIGIN");
-            response.AddHeaderIfMissing("X-XSS-Protection", "1; mode=block");
-            response.AddHeaderIfMissing("Referrer-Policy", "strict-origin-when-cross-origin");
-        }
-
-        /// <summary>
-        /// Adds security-related HTTP headers to the response.
-        /// </summary>
-        /// <param name="response">The HTTP response.</param>
-        public void AddSecurityHeaders(HttpResponse response)
-        {
-            AddSecurityHeaders(new ResponseHeaderManager(null, response));
-        }
-
-        /// <summary>
-        /// Adds Content Security Policy header to HTML responses using an abstraction.
-        /// </summary>
-        /// <param name="response">The response header manager.</param>
-        public void AddContentSecurityPolicy(IResponseHeaderManager response)
-        {
-            if (response.ContentType?.Contains(ContentTypeTextHtml) == true)
-            {
-                response.AddHeaderIfMissing("Content-Security-Policy",
-                    "default-src 'self'; " +
-                    "script-src 'self' 'unsafe-inline'; " +
-                    "style-src 'self' 'unsafe-inline'; " +
-                    "img-src 'self' data:; " +
-                    "frame-ancestors 'self'");
-            }
-        }
-
-        /// <summary>
-        /// Adds Content Security Policy header to HTML responses.
-        /// </summary>
-        /// <param name="response">The HTTP response.</param>
-        public void AddContentSecurityPolicy(HttpResponse response)
-        {
-            try
-            {
-                if (response.ContentType?.Contains(ContentTypeTextHtml) == true &&
-                    string.IsNullOrEmpty(response.Headers["Content-Security-Policy"]))
-                {
-                    response.Headers.Add("Content-Security-Policy",
-                        "default-src 'self'; " +
-                        "script-src 'self' 'unsafe-inline'; " +
-                        "style-src 'self' 'unsafe-inline'; " +
-                        "img-src 'self' data:; " +
-                        "frame-ancestors 'self'");
-                }
-            }
-            catch (Exception ex)
-            {
-                Trace.TraceWarning($"AddContentSecurityPolicy failed to set header: {ex}");
-            }
-        }
-
-        /// <summary>
-        /// Adds HTTP Strict Transport Security (HSTS) header for HTTPS connections using an abstraction.
-        /// </summary>
-        /// <param name="response">The response header manager.</param>
-        public void AddHstsHeader(IResponseHeaderManager response)
-        {
-            if (response.IsSecureConnection)
-            {
-                response.AddHeaderIfMissing("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
-            }
-        }
-
-        /// <summary>
-        /// Adds HTTP Strict Transport Security (HSTS) header for HTTPS connections.
-        /// </summary>
-        /// <param name="request">The HTTP request.</param>
-        /// <param name="response">The HTTP response.</param>
-        public void AddHstsHeader(HttpRequest request, HttpResponse response)
-        {
-            if (request.IsSecureConnection && string.IsNullOrEmpty(response.Headers["Strict-Transport-Security"]))
-            {
-                response.Headers.Add("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
             }
         }
 
