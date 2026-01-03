@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IISFrontGuard.Module.Integr
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IISFrontGuard.Handler", "IISFrontGuard.Handler\IISFrontGuard.Handler.csproj", "{F572129F-A11A-4F4A-8414-5E6D7185DACE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IISFrontGuard.Module.WebApp", "IISFrontGuard.Module.WebApp\IISFrontGuard.Module.WebApp.csproj", "{82F19F94-FB9D-4DCB-9A06-9DC620EC5608}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -35,6 +37,10 @@ Global
 		{F572129F-A11A-4F4A-8414-5E6D7185DACE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F572129F-A11A-4F4A-8414-5E6D7185DACE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F572129F-A11A-4F4A-8414-5E6D7185DACE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{82F19F94-FB9D-4DCB-9A06-9DC620EC5608}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{82F19F94-FB9D-4DCB-9A06-9DC620EC5608}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{82F19F94-FB9D-4DCB-9A06-9DC620EC5608}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{82F19F94-FB9D-4DCB-9A06-9DC620EC5608}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
