@@ -9,8 +9,6 @@
 
 namespace IISFrontGuard.Module.WebApp
 {
-
-
     public partial class _default
     {
     }

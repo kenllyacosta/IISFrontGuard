@@ -988,10 +988,7 @@ namespace IISFrontGuard.Module
                 }
             }
 
-            // Also check CF-Connecting-IP, True-Client-IP for CDN scenarios
-            return request.Headers["CF-Connecting-IP"]
-                ?? request.Headers["True-Client-IP"]
-                ?? directIp;
+            return directIp;
         }
 
         /// <summary>
