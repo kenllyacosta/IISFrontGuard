@@ -915,6 +915,12 @@ namespace IISFrontGuard.Module
                     return GetCountryIsoCode();
                 case 22: // continent
                     return GetContinentName();
+                case 23: // Ip from Cloudflare headers. The most reliable header for the real client IP. Set on every request.
+                    return GetClientIpFromHeaders(request, "CF-Connecting-IP");
+                case 24: // Ip from X-Forwarded-For header. Standard proxy header. Cloudflare appends the client IP to the list.
+                    return GetClientIpFromHeaders(request, "X-Forwarded-For");
+                case 25: // Ip from True-Client-IP header. The original visitor IP. Used when Cloudflare is configured to pass the real IP explicitly.
+                    return GetClientIpFromHeaders(request, "True-Client-IP");
                 default:
                     return string.Empty;
             }
@@ -990,6 +996,15 @@ namespace IISFrontGuard.Module
 
             return directIp;
         }
+
+        /// <summary>
+        /// Gets the client IP address from Cloudflare headers, falling back to direct IP if not present.
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="headerName"></param>
+        /// <returns></returns>
+        public string GetClientIpFromHeaders(HttpRequest request, string headerName)
+            => request.Headers[headerName] ?? GetClientIp(request);
 
         /// <summary>
         /// Gets the protocol (http or https) from the HTTP request.

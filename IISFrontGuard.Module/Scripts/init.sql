@@ -394,7 +394,10 @@ INSERT [dbo].[Field] ([Id], [Name], [NormalizedName], [Description], [CreatedAt]
 (19, N'body length', N'BODY_LENGTH', N'Request body size in bytes (numeric operators only)', GETDATE()),
 (20, N'country', N'COUNTRY', N'Request country (ISO 3166-1 alpha-2)', GETDATE()),
 (21, N'country-iso2', N'COUNTRY_ISO2', N'Request country (ISO 3166-1 alpha-2)', GETDATE()),
-(22, N'continent', N'CONTINENT', N'Request continent (ISO 3166-1 alpha-2)', GETDATE())
+(22, N'continent', N'CONTINENT', N'Request continent (ISO 3166-1 alpha-2)', GETDATE()),
+(23, N'ip-cf-connecting-ip', N'CF_CONNECTING_IP', N'The most reliable header for the real client IP. Set on every request.', GETDATE()),
+(24, N'ip-x-forwarded-for', N'IP_X_FORWARDED_FOR', N'Standard proxy header. Cloudflare appends the client IP to the list.', GETDATE()),
+(25, N'ip-cf-connecting-ip', N'TRUE_CLIENT_IP', N'The original visitor IP. Used when Cloudflare is configured to pass the real IP explicitly.', GETDATE())
 GO
 SET IDENTITY_INSERT [dbo].[Field] OFF
 GO

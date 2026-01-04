@@ -268,7 +268,7 @@ namespace IISFrontGuard.Module.IntegrationTests.Helpers
                 headers: new Dictionary<string, string> { { "CF-Connecting-IP", "203.0.113.1" } });
 
             // Act
-            var result = module.GetClientIp(request);
+            var result = module.GetClientIpFromHeaders(request, "CF-Connecting-IP");
 
             // Assert
             Assert.Equal("203.0.113.1", result);
@@ -285,7 +285,7 @@ namespace IISFrontGuard.Module.IntegrationTests.Helpers
                 headers: new Dictionary<string, string> { { "True-Client-IP", "198.51.100.1" } });
 
             // Act
-            var result = module.GetClientIp(request);
+            var result = module.GetClientIpFromHeaders(request, "True-Client-IP");
 
             // Assert
             Assert.Equal("198.51.100.1", result);
