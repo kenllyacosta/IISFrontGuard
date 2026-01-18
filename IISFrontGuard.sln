@@ -11,8 +11,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IISFrontGuard.Module.UnitTe
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IISFrontGuard.Module.IntegrationTests", "IISFrontGuard.Module.IntegrationTests\IISFrontGuard.Module.IntegrationTests.csproj", "{1004F155-7AA8-44F4-9F85-227840193116}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IISFrontGuard.Module.Web", "IISFrontGuard.Module.Web\IISFrontGuard.Module.Web.csproj", "{E6B237F4-C0E4-4F99-A413-AEE41DC5D9A8}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -31,10 +29,6 @@ Global
 		{1004F155-7AA8-44F4-9F85-227840193116}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1004F155-7AA8-44F4-9F85-227840193116}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1004F155-7AA8-44F4-9F85-227840193116}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E6B237F4-C0E4-4F99-A413-AEE41DC5D9A8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E6B237F4-C0E4-4F99-A413-AEE41DC5D9A8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E6B237F4-C0E4-4F99-A413-AEE41DC5D9A8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E6B237F4-C0E4-4F99-A413-AEE41DC5D9A8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -42,7 +36,6 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{B1232AFD-C587-4C27-9242-9542D092EF97} = {7F0E8B32-5F34-4C5F-A2C8-6D26B0E33E00}
 		{1004F155-7AA8-44F4-9F85-227840193116} = {7F0E8B32-5F34-4C5F-A2C8-6D26B0E33E00}
-		{E6B237F4-C0E4-4F99-A413-AEE41DC5D9A8} = {7F0E8B32-5F34-4C5F-A2C8-6D26B0E33E00}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {822B2658-FC0C-4456-A4D9-D77D4EDDF599}
