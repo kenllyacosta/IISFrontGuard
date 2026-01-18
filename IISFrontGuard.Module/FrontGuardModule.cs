@@ -140,6 +140,23 @@ namespace IISFrontGuard.Module
             int rateLimitMaxRequestsPerMinute = GetAppSettingAsInt("IISFrontGuard.RateLimitMaxRequestsPerMinute", RateLimitMaxRequestsPerMinute);
             int rateLimitWindowSeconds = GetAppSettingAsInt("IISFrontGuard.RateLimitWindowSeconds", RateLimitWindowSeconds);
 
+            var cs = GetConnectionString(request);
+            string iso2 = "00";
+            string clientIpString = app.Context.Request.UserHostAddress;
+
+            // Resolve geo info per-request and store it in HttpContext.Items so it is not shared across requests
+            CountryResponse requestGeoInfo = null;
+
+            if (_geoIPService != null)
+                requestGeoInfo = _geoIPService.GetGeoInfo(clientIpString);
+            else
+                requestGeoInfo = new CountryResponse();
+
+            if (clientIpString != "::1" && clientIpString != "127.0.0.1" && requestGeoInfo?.Country != null)
+                iso2 = requestGeoInfo.Country.IsoCode ?? iso2;
+
+            _requestLogger.Enqueue(request, cs, null, rayId, iso2, 6, null);
+
             // Rate limiting check
             if (IsRateLimited(clientIp, rateLimitMaxRequestsPerMinute, rateLimitWindowSeconds))
             {
@@ -169,26 +186,7 @@ namespace IISFrontGuard.Module
 
             _httpContextAccessor.SetContextItem("RayId", rayId);
 
-            string clientIpString = app.Context.Request.UserHostAddress;
-            string iso2 = "00";
-
-            // Resolve geo info per-request and store it in HttpContext.Items so it is not shared across requests
-            CountryResponse requestGeoInfo = null;
-
-            if (_geoIPService != null)
-                requestGeoInfo = _geoIPService.GetGeoInfo(clientIpString);
-            else
-                requestGeoInfo = new CountryResponse();
-
-            _httpContextAccessor.SetContextItem(GeoInfoContextKey, requestGeoInfo);
-
-            if (clientIpString != "::1" && clientIpString != "127.0.0.1" && requestGeoInfo?.Country != null)
-            {
-                iso2 = requestGeoInfo.Country.IsoCode ?? iso2;
-            }
-
-            var cs = GetConnectionString(request);
-            _requestLogger.Enqueue(request, cs, null, rayId, iso2, 6, null); //Traffic logged
+            _httpContextAccessor.SetContextItem(GeoInfoContextKey, requestGeoInfo);            
 
             var rules = FetchWafRules(request.Url.Host);
 
@@ -794,7 +792,7 @@ namespace IISFrontGuard.Module
         public bool EvaluateCondition(WafCondition condition, HttpRequest request)
         {
             // Evaluate a single condition
-            string fieldValue = GetFieldValue(condition.FieldId, request, condition.FieldName?.ToLower()).ToLower();
+            var fieldValue = (GetFieldValue(condition.FieldId, request, condition.FieldName?.ToLower()) ?? string.Empty);
             switch (condition.OperatorId)
             {
                 case 1: // "equals":

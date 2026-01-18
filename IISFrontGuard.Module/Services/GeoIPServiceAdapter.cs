@@ -1,6 +1,7 @@
 using IISFrontGuard.Module.Abstractions;
 using MaxMind.GeoIP2;
 using MaxMind.GeoIP2.Responses;
+using System.Web;
 
 namespace IISFrontGuard.Module.Services
 {
@@ -16,9 +17,7 @@ namespace IISFrontGuard.Module.Services
         /// </summary>
         /// <param name="databasePath">The file path to the MaxMind GeoIP2 database file.</param>
         public GeoIPServiceAdapter(string databasePath)
-        {
-            _databasePath = databasePath;
-        }
+            => _databasePath = databasePath;
 
         /// <summary>
         /// Retrieves geographic information for an IP address using the GeoIP2 database.
@@ -30,10 +29,8 @@ namespace IISFrontGuard.Module.Services
             CountryResponse result = new CountryResponse();
             try
             {
-                using (var reader = new DatabaseReader(_databasePath))
-                {
+                using (var reader = new DatabaseReader(HttpContext.Current.Server.MapPath(_databasePath)))
                     result = reader.Country(ipAddress);
-                }   
             }
             catch
             {
