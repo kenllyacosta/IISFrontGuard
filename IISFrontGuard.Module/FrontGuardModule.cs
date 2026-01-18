@@ -30,6 +30,7 @@ namespace IISFrontGuard.Module
         private const string ContentTypeTextHtml = "text/html";
         private const string GeoInfoContextKey = "IISFrontGuard.GeoInfo";
         private const string WebHookEnabledAppSettingKey = "IISFrontGuard.Webhook.Enabled";
+        private const string OptimizedEngineEnabledKey = "IISFrontGuard.OptimizedEngine.Enabled";
 
         // Dependencies
         private readonly IRequestLogger _requestLogger;
@@ -39,9 +40,12 @@ namespace IISFrontGuard.Module
         private readonly ICacheProvider _tokenCache;
         private readonly IConfigurationProvider _configuration;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly CompiledRuleRepository _compiledRuleRepository;
 
         private readonly ConcurrentDictionary<string, RateLimitInfo> _rateLimitCache;
         private readonly ConcurrentDictionary<string, ChallengeFailureInfo> _challengeFailures;
+        
+        private readonly bool _useOptimizedEngine;
 
         /// <summary>
         /// Indicates whether webhook notifications are enabled for security events.
@@ -89,6 +93,10 @@ namespace IISFrontGuard.Module
             _challengeFailures = new ConcurrentDictionary<string, ChallengeFailureInfo>();
 
             webhookEnabled = _configuration.GetAppSettingAsBool(WebHookEnabledAppSettingKey, false);
+            _useOptimizedEngine = _configuration.GetAppSettingAsBool(OptimizedEngineEnabledKey, true); // Enabled by default
+            
+            // Initialize compiled rule repository for optimized engine
+            _compiledRuleRepository = new CompiledRuleRepository(_wafRuleRepository, tokenCache);
         }
 
         /// <summary>
@@ -145,8 +153,7 @@ namespace IISFrontGuard.Module
             string clientIpString = app.Context.Request.UserHostAddress;
 
             // Resolve geo info per-request and store it in HttpContext.Items so it is not shared across requests
-            CountryResponse requestGeoInfo = null;
-
+            CountryResponse requestGeoInfo;
             if (_geoIPService != null)
                 requestGeoInfo = _geoIPService.GetGeoInfo(clientIpString);
             else
@@ -188,6 +195,60 @@ namespace IISFrontGuard.Module
 
             _httpContextAccessor.SetContextItem(GeoInfoContextKey, requestGeoInfo);            
 
+            // Choose evaluation path based on configuration
+            if (_useOptimizedEngine)
+                EvaluateRulesOptimized(request, response, rayId, iso2, requestGeoInfo);
+            else
+                EvaluateRulesLegacy(request, response, rayId, iso2);
+
+            StartRequestTiming(app);
+        }
+
+        /// <summary>
+        /// Evaluates WAF rules using the optimized compiled engine.
+        /// This path uses pre-compiled delegates and cached request context for maximum performance.
+        /// Uses rule indexing to evaluate only candidate rules (much faster when there are many rules).
+        /// </summary>
+        private void EvaluateRulesOptimized(HttpRequest request, HttpResponse response, string rayId, string iso2, CountryResponse geoInfo)
+        {
+            var connectionString = GetConnectionString(request);
+            
+            // Get indexed compiled rules (cached)
+            var indexedRuleSet = _compiledRuleRepository.GetIndexedCompiledRules(request.Url.Host, connectionString);
+            
+            // Create request context once (extracts and caches all values)
+            var requestContext = new RequestContext(request, geoInfo, _requestLogger.GetBody);
+
+            // Get candidate rules based on discriminators (method, path, etc.)
+            // This is MUCH faster than evaluating all rules
+            var candidateRules = indexedRuleSet.GetCandidateRules(requestContext);
+
+            // Evaluate only candidate rules
+            foreach (var compiledRule in candidateRules)
+            {
+                try
+                {
+                    if (compiledRule.Evaluate(requestContext))
+                    {
+                        // Rule matched - handle action using original rule for metadata
+                        HandleRuleAction(compiledRule.OriginalRule, request, response, rayId, iso2);
+                        break; // Stop on first match
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Trace.TraceError($"Error evaluating compiled rule {compiledRule.Id}: {ex.Message}");
+                    // Continue to next rule
+                }
+            }
+        }
+
+        /// <summary>
+        /// Evaluates WAF rules using the legacy interpretive engine.
+        /// This path is kept for backward compatibility and testing.
+        /// </summary>
+        private void EvaluateRulesLegacy(HttpRequest request, HttpResponse response, string rayId, string iso2)
+        {
             var rules = FetchWafRules(request.Url.Host);
 
             foreach (var rule in rules.OrderBy(r => r.Prioridad))
@@ -195,14 +256,12 @@ namespace IISFrontGuard.Module
                 if (!rule.Habilitado)
                     continue;
 
-                if (EvaluateConditions(rule.Conditions, request))
+                if (EvaluateRule(rule, request))
                 {
                     HandleRuleAction(rule, request, response, rayId, iso2);
                     break;
                 }
             }
-
-            StartRequestTiming(app);
         }
 
         /// <summary>
@@ -293,27 +352,20 @@ namespace IISFrontGuard.Module
                     LogAndProceed(request, logContext);
                     break;
                 case 2: // "block":
-
                     if (GetAppSettingAsBool(WebHookEnabledAppSettingKey, false))
-                    {
                         SendSecurityEventNotification(CreateBlockedEventNotification(request, rule, rayId));
-                    }
 
                     BlockRequest(request, response, logContext);
                     break;
                 case 3: // "managed challenge":
                     if (string.IsNullOrEmpty(token) && webhookEnabled)
-                    {
                         SendSecurityEventNotification(CreateChallengeEventNotification(request, rule, rayId, "managed"));
-                    }
 
                     HandleManagedChallenge(request, response, token, key, logContext);
                     break;
                 case 4: // "interactive challenge":
                     if (string.IsNullOrEmpty(token) && webhookEnabled)
-                    {
                         SendSecurityEventNotification(CreateChallengeEventNotification(request, rule, rayId, "interactive"));
-                    }
 
                     HandleInteractiveChallenge(request, response, token, key, logContext);
                     break;
@@ -762,18 +814,78 @@ namespace IISFrontGuard.Module
         }
 
         /// <summary>
-        /// Evaluates a collection of WAF conditions against the HTTP request.
+        /// Evaluates a WAF rule against the HTTP request using group-based logic.
+        /// Rules are evaluated as: (Group1) OR (Group2) OR (Group3) ...
+        /// Each group is evaluated as: Condition1 AND Condition2 AND Condition3 ...
         /// </summary>
-        /// <param name="conditions">The conditions to evaluate.</param>
+        /// <param name="rule">The WAF rule to evaluate.</param>
         /// <param name="request">The HTTP request.</param>
-        /// <returns><c>true</c> if all conditions are satisfied; otherwise, <c>false</c>.</returns>
+        /// <returns><c>true</c> if the rule matches; otherwise, <c>false</c>.</returns>
+        public bool EvaluateRule(WafRule rule, HttpRequest request)
+        {
+            // If the rule has groups defined, use the new group-based evaluation
+            if (rule.Groups != null && rule.Groups.Count > 0)
+            {
+                // OR across groups: if any group matches, the rule matches
+                return rule.Groups.Any(group => EvaluateGroup(group, request));
+            }
+
+            // Fallback to legacy flat condition list for backward compatibility
+            if (rule.Conditions != null && rule.Conditions.Count > 0)
+            {
+#pragma warning disable CS0618 // Type or member is obsolete
+                return EvaluateConditions(rule.Conditions, request);
+#pragma warning restore CS0618 // Type or member is obsolete
+            }
+
+            // No conditions means no match
+            return false;
+        }
+
+        /// <summary>
+        /// Evaluates a group of WAF conditions with AND logic.
+        /// All conditions in the group must match for the group to match.
+        /// </summary>
+        /// <param name="group">The WAF group containing conditions.</param>
+        /// <param name="request">The HTTP request.</param>
+        /// <returns><c>true</c> if all conditions in the group match; otherwise, <c>false</c>.</returns>
+        private bool EvaluateGroup(WafGroup group, HttpRequest request)
+        {
+            if (group?.Conditions == null || group.Conditions.Count == 0)
+                return false;
+
+            // AND logic: all conditions must match
+            foreach (var condition in group.Conditions)
+            {
+                var match = EvaluateCondition(condition, request);
+                
+                // Apply negation if specified
+                if (condition.Negate) 
+                    match = !match;
+
+                // If any condition fails, the entire group fails (AND logic)
+                if (!match) 
+                    return false;
+            }
+            
+            return true;
+        }
+
+        /// <summary>
+        /// Evaluates legacy flat condition lists that use LogicOperator.
+        /// This method is kept for backward compatibility with older rule configurations.
+        /// </summary>
+        /// <param name="conditions">The flat list of conditions.</param>
+        /// <param name="request">The HTTP request.</param>
+        /// <returns><c>true</c> if the conditions match; otherwise, <c>false</c>.</returns>
+        [Obsolete("Use group-based evaluation with EvaluateRule instead. This method is for backward compatibility only.")]
         public bool EvaluateConditions(IEnumerable<WafCondition> conditions, HttpRequest request)
         {
-            // Evaluate conditions against the request
             bool result = true;
             foreach (var condition in conditions)
             {
                 bool match = EvaluateCondition(condition, request);
+                
                 if (condition.LogicOperator == 1 && !match) // AND
                     return false;
 
@@ -2108,9 +2220,7 @@ namespace IISFrontGuard.Module
                 {
                     var hostConnectionString = GetHostSpecificConnectionString(host);
                     if (hostConnectionString != null)
-                    {
                         return hostConnectionString;
-                    }
                 }
 
                 var defaultName = _configuration.GetAppSetting("IISFrontGuard.DefaultConnectionStringName");
@@ -2118,9 +2228,7 @@ namespace IISFrontGuard.Module
                 {
                     var defaultCs = _configuration.GetConnectionString(defaultName);
                     if (defaultCs != null)
-                    {
                         return defaultCs;
-                    }
                 }
             }
             catch (Exception ex)
