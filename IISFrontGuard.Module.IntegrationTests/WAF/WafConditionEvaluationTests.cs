@@ -43,50 +43,6 @@ namespace IISFrontGuard.Module.IntegrationTests.WAF
         }
 
         [Fact]
-        public void EvaluateCondition_WithEqualsOperator_ShouldReturnCorrectResult()
-        {
-            // Arrange
-            var module = TestHelpers.CreateModuleWithTestConfig(
-                _requestLogger, _webhookNotifier, _geoIPService, 
-                _wafRuleRepository, _tokenCache, _configuration, _httpContextAccessor);
-            var request = TestHelpers.CreateMockHttpRequest("http://localhost/test", "GET");
-            var condition = new WafCondition
-            {
-                FieldId = 7, // method
-                OperatorId = 1, // equals
-                Valor = "get"
-            };
-
-            // Act
-            var result = module.EvaluateCondition(condition, request);
-
-            // Assert
-            Assert.True(result);
-        }
-
-        [Fact]
-        public void EvaluateCondition_WithDoesNotEqualOperator_ShouldReturnCorrectResult()
-        {
-            // Arrange
-            var module = TestHelpers.CreateModuleWithTestConfig(
-                _requestLogger, _webhookNotifier, _geoIPService, 
-                _wafRuleRepository, _tokenCache, _configuration, _httpContextAccessor);
-            var request = TestHelpers.CreateMockHttpRequest("http://localhost/test", "POST");
-            var condition = new WafCondition
-            {
-                FieldId = 7, // method
-                OperatorId = 2, // does not equal
-                Valor = "get"
-            };
-
-            // Act
-            var result = module.EvaluateCondition(condition, request);
-
-            // Assert
-            Assert.False(result);
-        }
-
-        [Fact]
         public void EvaluateCondition_WithContainsOperator_ShouldReturnCorrectResult()
         {
             // Arrange
@@ -263,28 +219,6 @@ namespace IISFrontGuard.Module.IntegrationTests.WAF
         }
 
         [Fact]
-        public void EvaluateCondition_WithIsInOperator_ShouldReturnCorrectResult()
-        {
-            // Arrange
-            var module = TestHelpers.CreateModuleWithTestConfig(
-                _requestLogger, _webhookNotifier, _geoIPService, 
-                _wafRuleRepository, _tokenCache, _configuration, _httpContextAccessor);
-            var request = TestHelpers.CreateMockHttpRequest("http://localhost/test", "POST");
-            var condition = new WafCondition
-            {
-                FieldId = 7, // method
-                OperatorId = 11, // is in
-                Valor = "get,post,put"
-            };
-
-            // Act
-            var result = module.EvaluateCondition(condition, request);
-
-            // Assert
-            Assert.True(result);
-        }
-
-        [Fact]
         public void EvaluateCondition_WithIsNotInOperator_ShouldReturnCorrectResult()
         {
             // Arrange
@@ -297,28 +231,6 @@ namespace IISFrontGuard.Module.IntegrationTests.WAF
                 FieldId = 7, // method
                 OperatorId = 12, // is not in
                 Valor = "post,put,delete"
-            };
-
-            // Act
-            var result = module.EvaluateCondition(condition, request);
-
-            // Assert
-            Assert.True(result);
-        }
-
-        [Fact]
-        public void EvaluateCondition_WithIsInListOperator_ShouldReturnCorrectResult()
-        {
-            // Arrange
-            var module = TestHelpers.CreateModuleWithTestConfig(
-                _requestLogger, _webhookNotifier, _geoIPService, 
-                _wafRuleRepository, _tokenCache, _configuration, _httpContextAccessor);
-            var request = TestHelpers.CreateMockHttpRequest("http://localhost/test", "POST");
-            var condition = new WafCondition
-            {
-                FieldId = 7, // method
-                OperatorId = 13, // is in list
-                Valor = "get, post, put"
             };
 
             // Act

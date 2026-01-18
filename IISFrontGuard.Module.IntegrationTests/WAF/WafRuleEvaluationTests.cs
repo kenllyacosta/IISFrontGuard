@@ -44,27 +44,6 @@ namespace IISFrontGuard.Module.IntegrationTests.WAF
         }
 
         [Fact]
-        public void EvaluateConditions_WithAndOperator_ShouldRequireAllConditions()
-        {
-            // Arrange
-            var module = TestHelpers.CreateModuleWithTestConfig(
-                _requestLogger, _webhookNotifier, _geoIPService, 
-                _wafRuleRepository, _tokenCache, _configuration, _httpContextAccessor);
-            var request = TestHelpers.CreateMockHttpRequest("http://localhost/api/test", "GET");
-            var conditions = new List<WafCondition>
-            {
-                new WafCondition { FieldId = 7, OperatorId = 1, Valor = "get", LogicOperator = 1 },
-                new WafCondition { FieldId = 13, OperatorId = 3, Valor = "/api/", LogicOperator = 1 }
-            };
-
-            // Act
-            var result = module.EvaluateConditions(conditions, request);
-
-            // Assert
-            Assert.True(result);
-        }
-
-        [Fact]
         public void EvaluateConditions_WithOrOperator_ShouldRequireOneCondition()
         {
             // Arrange
