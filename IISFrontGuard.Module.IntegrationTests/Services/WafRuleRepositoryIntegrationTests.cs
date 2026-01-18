@@ -341,7 +341,7 @@ namespace IISFrontGuard.Module.IntegrationTests.Services
         {
             var repo = new WafRuleRepository(new SimpleCacheProvider());
             var host = "test.local";
-            Assert.Throws<System.Data.SqlClient.SqlException>(() =>
+            Assert.Throws<System.ArgumentException>(() =>
             {
                 repo.FetchWafRules(host, "Invalid Connection String").ToList();
             });
@@ -351,7 +351,7 @@ namespace IISFrontGuard.Module.IntegrationTests.Services
         public void FetchWafConditions_WithInvalidConnectionString_ThrowsException()
         {
             var repo = new WafRuleRepository(new SimpleCacheProvider());
-            Assert.Throws<System.Data.SqlClient.SqlException>(() =>
+            Assert.Throws<System.ArgumentException>(() =>
             {
                 repo.FetchWafConditions(1, "Invalid Connection String");
             });
@@ -459,10 +459,11 @@ namespace IISFrontGuard.Module.IntegrationTests.Services
         private static int InsertWafGroup(System.Data.SqlClient.SqlConnection connection, int ruleId, int groupOrder)
         {
             var insertGroupCmd = new System.Data.SqlClient.SqlCommand(
-                "INSERT INTO WafGroups (WafRuleId, GroupOrder) VALUES (@RuleId, @GroupOrder); SELECT CAST(SCOPE_IDENTITY() as int);",
+                "INSERT INTO WafGroups (WafRuleId, GroupOrder, CreationDate) VALUES (@RuleId, @GroupOrder, @CreationDate); SELECT CAST(SCOPE_IDENTITY() as int);",
                 connection);
             insertGroupCmd.Parameters.AddWithValue("@RuleId", ruleId);
             insertGroupCmd.Parameters.AddWithValue("@GroupOrder", groupOrder);
+            insertGroupCmd.Parameters.AddWithValue("@CreationDate", DateTime.UtcNow);
             return (int)insertGroupCmd.ExecuteScalar();
         }
 
