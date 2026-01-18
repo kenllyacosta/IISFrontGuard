@@ -14,7 +14,7 @@
     <summary>Enterprise-grade IIS security module with WAF, rate limiting, GeoIP filtering, and automatic security header management.</summary>
     <releaseNotes>Initial release with WAF, rate limiting, GeoIP filtering, automatic security header management, and webhook notification support.</releaseNotes>
     <copyright>Copyright � 2025</copyright>
-    <tags>IIS Security WAF RateLimit GeoIP Module HttpModule AspNet WebSecurity Firewall</tags>
+    <tags>IIS Security WAF RateLimit GeoIP Module HttpModule AspNet WebSecurity Firewall, Intranet</tags>
     <repository type="git" url="https://github.com/kenllyacosta/IISFrontGuard" />
     <readme>README.md</readme>
     <dependencies>
