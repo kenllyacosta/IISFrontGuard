@@ -815,18 +815,14 @@ namespace IISFrontGuard.Module
                     return fieldValue.EndsWith(condition.Valor, StringComparison.OrdinalIgnoreCase);
                 case 10: // "does not end with":
                     return !fieldValue.EndsWith(condition.Valor, StringComparison.OrdinalIgnoreCase);
-                case 11: // "is in":
+                case 11: // "is in" or is in list:
+                case 13: // "is in list":
                     var valuesIn = condition.Valor.Split(',').Select(v => v.Trim());
                     return valuesIn.Contains(fieldValue);
                 case 12: // "is not in":
-                    var valuesNotIn = condition.Valor.Split(',').Select(v => v.Trim());
-                    return !valuesNotIn.Contains(fieldValue);
-                case 13: // "is in list":
-                    var valuesInList = condition.Valor.Split(',').Select(v => v.Trim()).ToList();
-                    return valuesInList.Contains(fieldValue);
                 case 14: // "is not in list":
-                    var valuesNotInList = condition.Valor.Split(',').Select(v => v.Trim()).ToList();
-                    return !valuesNotInList.Contains(fieldValue);
+                    var valuesNotIn = condition.Valor.Split(',').Select(v => v.Trim());
+                    return !valuesNotIn.Contains(fieldValue);                                
                 case 15: // "is ip in range":
                     IpValidator ipValidator = new IpValidator(condition.Valor.Split(','));
                     return ipValidator.IsInIp(fieldValue);
