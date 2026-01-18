@@ -103,6 +103,7 @@
     <Compile Include="Helpers\UtilityMethodsTests.cs" />
     <Compile Include="IisIntegrationFixture.cs" />
     <Compile Include="IisIntegrationTestCollection.cs" />
+    <Compile Include="IntegrationTestFactAttribute.cs" />
     <Compile Include="Notifications\EventNotificationTests.cs" />
     <Compile Include="Pages\ChallengePageTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -125,6 +126,7 @@
     <None Include="Cleanup-IISTestEnvironment.ps1" />
     <None Include="DOCUMENTATION_DatabaseCleanupStrategy.md" />
     <None Include="packages.config" />
+    <None Include="Setup-IISTestEnvironment.ps1" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\IISFrontGuard.Module\IISFrontGuard.Module.csproj">

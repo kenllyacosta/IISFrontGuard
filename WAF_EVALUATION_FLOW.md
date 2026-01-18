@@ -1,0 +1,202 @@
+# WAF Rule Evaluation Flow
+
+## Visual Representation
+
+```
+???????????????????????????????????????????????????????????????
+?                     EvaluateRule(rule)                      ?
+?                                                             ?
+?  ???????????????????????????????????????????????????????   ?
+?  ? Has Groups?                                         ?   ?
+?  ???????????????????????????????????????????????????????   ?
+?       ?                                                     ?
+?       ??YES??? ????????????????????????????????????????   ?
+?       ?        ?   Group 1 (AND logic)                ?   ?
+?       ?        ?   ?? Condition A                     ?   ?
+?       ?        ?   ?? Condition B (with negation?)    ?   ?
+?       ?        ?   ?? Condition C                     ?   ?
+?       ?        ????????????????????????????????????????   ?
+?       ?                       ?                            ?
+?       ?                       ? Match? ??YES??? MATCH!     ?
+?       ?                       ?                            ?
+?       ?                       ??NO????                     ?
+?       ?                              ?                     ?
+?       ?        ????????????????????????????????????????   ?
+?       ?        ?   Group 2 (AND logic)                ?   ?
+?       ?        ?   ?? Condition D                     ?   ?
+?       ?        ?   ?? Condition E                     ?   ?
+?       ?        ????????????????????????????????????????   ?
+?       ?                       ?                            ?
+?       ?                       ? Match? ??YES??? MATCH!     ?
+?       ?                       ?                            ?
+?       ?                       ??NO????                     ?
+?       ?                              ?                     ?
+?       ?        ????????????????????????????????????????   ?
+?       ?        ?   Group 3 (AND logic)                ?   ?
+?       ?        ?   ?? Condition F                     ?   ?
+?       ?        ????????????????????????????????????????   ?
+?       ?                       ?                            ?
+?       ?                       ? Match? ??YES??? MATCH!     ?
+?       ?                       ?                            ?
+?       ?                       ??NO??? NO MATCH             ?
+?       ?                                                     ?
+?       ??NO??? ????????????????????????????????????????   ?
+?               ?  Legacy: Has Conditions?             ?   ?
+?               ????????????????????????????????????????   ?
+?                    ?                                      ?
+?                    ??YES??? EvaluateConditions()         ?
+?                    ?        (with LogicOperator)         ?
+?                    ?                                      ?
+?                    ??NO???? NO MATCH                      ?
+?                                                             ?
+???????????????????????????????????????????????????????????????
+```
+
+## Evaluation Examples
+
+### Example 1: Block Bad Bots from Specific Countries
+
+```
+Rule: "Block Known Bots from High-Risk Countries"
+
+Group 1: (Country = "XX" AND UserAgent contains "bot")
+  ?? Condition: Country IsoCode equals "XX"         [FieldId=21, OperatorId=1]
+  ?? Condition: UserAgent contains "bot"            [FieldId=9, OperatorId=3]
+  
+  Evaluation: TRUE if (Country=="XX" AND UserAgent has "bot")
+  
+Group 2: (Country = "YY" AND UserAgent matches "scraper")
+  ?? Condition: Country IsoCode equals "YY"         [FieldId=21, OperatorId=1]
+  ?? Condition: UserAgent matches regex "scraper"   [FieldId=9, OperatorId=5]
+  
+  Evaluation: TRUE if (Country=="YY" AND UserAgent matches pattern)
+
+Result: Block if Group1 OR Group2 matches
+```
+
+### Example 2: Managed Challenge for Suspicious Activity
+
+```
+Rule: "Challenge Suspicious Login Attempts"
+
+Group 1: (Path = "/login" AND Method = "POST" AND Cookie "trusted" not present)
+  ?? Condition: URL path equals "/login"            [FieldId=13, OperatorId=1]
+  ?? Condition: HTTP method equals "POST"           [FieldId=7, OperatorId=1]
+  ?? Condition: Cookie "trusted" is not present     [FieldId=1, OperatorId=22]
+  
+Group 2: (Rate > 10 requests/min AND Referrer not present)
+  ?? Condition: Rate limit check                    [Custom logic]
+  ?? Condition: Referrer is not present             [FieldId=6, OperatorId=22]
+
+Result: Challenge if Group1 OR Group2 matches
+```
+
+### Example 3: Complex Multi-Layered Protection
+
+```
+Rule: "Advanced Admin Protection"
+
+Group 1: (Admin Path AND Not from Office IP)
+  ?? Condition: Path starts with "/admin"           [FieldId=14, OperatorId=7]
+  ?? Condition: IP not in range "10.0.0.0/8"        [FieldId=4, OperatorId=16, Negate=false]
+
+Group 2: (Admin Path AND Suspicious UA)
+  ?? Condition: Path starts with "/admin"           [FieldId=14, OperatorId=7]
+  ?? Condition: UserAgent contains "curl"           [FieldId=9, OperatorId=3]
+  ?? Condition: Referrer not present                [FieldId=6, OperatorId=22]
+
+Group 3: (High-Risk Country AND POST request)
+  ?? Condition: Country in list "XX,YY,ZZ"          [FieldId=21, OperatorId=13]
+  ?? Condition: Method equals "POST"                [FieldId=7, OperatorId=1]
+  ?? Condition: Body length > 10000 bytes           [FieldId=19, OperatorId=17]
+
+Result: Block if Group1 OR Group2 OR Group3 matches
+```
+
+## Condition Negation
+
+Conditions support negation via the `Negate` property:
+
+```csharp
+// Normal: Match if IP is in the whitelist
+Condition: IP in range "192.168.0.0/16"  [Negate=false]
+Result: TRUE if IP matches the range
+
+// Negated: Match if IP is NOT in the whitelist
+Condition: IP in range "192.168.0.0/16"  [Negate=true]
+Result: TRUE if IP does NOT match the range
+```
+
+## Performance Characteristics
+
+### Fail-Fast Evaluation
+
+**Within a Group (AND logic)**:
+```
+Group: A AND B AND C
+- Evaluate A ? FALSE ? STOP (group fails)
+- Evaluate A ? TRUE ? Evaluate B ? FALSE ? STOP (group fails)
+- Evaluate A ? TRUE ? Evaluate B ? TRUE ? Evaluate C ? Result
+```
+
+**Across Groups (OR logic)**:
+```
+Rule: Group1 OR Group2 OR Group3
+- Evaluate Group1 ? TRUE ? STOP (rule matches)
+- Evaluate Group1 ? FALSE ? Evaluate Group2 ? TRUE ? STOP (rule matches)
+- Evaluate Group1 ? FALSE ? Evaluate Group2 ? FALSE ? Evaluate Group3 ? Result
+```
+
+### Best Practices for Performance
+
+1. **Order Groups by Likelihood**: Put most likely to match groups first
+2. **Order Conditions by Speed**: Within groups, evaluate fastest conditions first
+3. **Use Negation Wisely**: `Negate` adds overhead; structure conditions to avoid when possible
+4. **Avoid Expensive Regex**: Use simpler operators (contains, starts with) when possible
+5. **Limit Regex Timeout**: All regex operations have a 2-second timeout to prevent ReDoS
+
+## Operator Reference
+
+| OperatorId | Operator | Example | Performance |
+|------------|----------|---------|-------------|
+| 1 | equals | `"admin"` | Fast (string ==) |
+| 2 | not equals | `"admin"` | Fast (string !=) |
+| 3 | contains | `"bot"` | Fast (indexOf) |
+| 4 | not contains | `"bot"` | Fast (indexOf + !) |
+| 5 | matches regex | `".*bot.*"` | Slow (2s timeout) |
+| 6 | not matches regex | `".*bot.*"` | Slow (2s timeout) |
+| 7 | starts with | `"/admin"` | Fast (StartsWith) |
+| 8 | not starts with | `"/admin"` | Fast (StartsWith + !) |
+| 9 | ends with | `".php"` | Fast (EndsWith) |
+| 10 | not ends with | `".php"` | Fast (EndsWith + !) |
+| 11/13 | is in list | `"XX,YY,ZZ"` | Fast (Split + Contains) |
+| 12/14 | not in list | `"XX,YY,ZZ"` | Fast (Split + !Contains) |
+| 15 | IP in range | `"10.0.0.0/8"` | Medium (IP parsing) |
+| 16 | IP not in range | `"10.0.0.0/8"` | Medium (IP parsing) |
+| 17-20 | Numeric comparisons | `"100"` | Fast (TryParse + compare) |
+| 21 | is present | - | Fast (null check) |
+| 22 | not present | - | Fast (null check) |
+
+## Migration from Legacy Conditions
+
+### Old Pattern (Flat with LogicOperator)
+```csharp
+Conditions:
+  [0] Country = "XX"     LogicOperator=1 (AND)
+  [1] UserAgent has bot  LogicOperator=2 (OR)
+  [2] IP in range        LogicOperator=1 (AND)
+
+Logic is unclear and hard to debug
+```
+
+### New Pattern (Groups)
+```csharp
+Group 1:
+  - Country = "XX"
+  - UserAgent has bot
+  
+Group 2:
+  - IP in range
+
+Logic is explicit: (Country AND UserAgent) OR (IP)
+```

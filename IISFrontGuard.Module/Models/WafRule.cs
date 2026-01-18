@@ -4,6 +4,27 @@ using System.Collections.Generic;
 namespace IISFrontGuard.Module.Models
 {
     /// <summary>
+    /// Defines how groups of conditions are joined together.
+    /// </summary>
+    public enum GroupJoin {
+        /// <summary>
+        /// Logical OR operator. // join BETWEEN groups
+        /// </summary>
+        Or = 1 
+    }
+
+    /// <summary>
+    /// Defines how conditions within a group are joined together.
+    /// </summary>
+    public enum ConditionJoin 
+    {
+        /// <summary>
+        /// Logical OR operator. // join WITHIN a group (Cloudflare-style)
+        /// </summary>
+        And = 1 
+    }
+
+    /// <summary>
     /// Represents a Web Application Firewall (WAF) rule that defines security policies.
     /// </summary>
     public class WafRule
@@ -47,5 +68,10 @@ namespace IISFrontGuard.Module.Models
         /// Gets or sets the list of conditions that must be met for this rule to trigger.
         /// </summary>
         public List<WafCondition> Conditions { get; set; }
+
+        /// <summary>
+        /// Gets or sets the list of groups of conditions for this rule.
+        /// </summary>
+        public List<WafGroup> Groups { get; set; } = new List<WafGroup>();
     }
 }

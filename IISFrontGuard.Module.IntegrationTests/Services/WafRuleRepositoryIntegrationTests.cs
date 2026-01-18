@@ -27,7 +27,10 @@ namespace IISFrontGuard.Module.IntegrationTests.Services
 
             public void Remove(string key)
             {
-                throw new NotImplementedException();
+                if (_cache.ContainsKey(key))
+                {
+                    _cache.Remove(key);
+                }
             }
         }
 
@@ -213,6 +216,273 @@ namespace IISFrontGuard.Module.IntegrationTests.Services
                 Assert.All(conditions, c => Assert.Equal(ruleId, c.WafRuleEntityId));
                 Assert.True(conditions.Count > 0);
             }
+        }
+
+        [Fact]
+        public void FetchWafRules_WithGroupBasedSchema_ReturnsRulesWithGroups()
+        {
+            var cache = new SimpleCacheProvider();
+            var repo = new WafRuleRepository(cache);
+            var host = "integration-test-groups.local";
+            EnsureHostWithRuleWithGroups(host);
+            var rules = repo.FetchWafRules(host, ConnectionString).ToList();
+            Assert.NotNull(rules);
+            Assert.NotEmpty(rules);
+            Assert.All(rules, r =>
+            {
+                Assert.NotNull(r.Groups);
+                Assert.NotNull(r.Conditions);
+            });
+            var rulesWithGroups = rules.Where(r => r.Groups.Count > 0).ToList();
+            if (rulesWithGroups.Count > 0)
+            {
+                Assert.All(rulesWithGroups, r => Assert.Empty(r.Conditions));
+            }
+        }
+
+        [Fact]
+        public void FetchWafRules_WithMultipleGroups_ReturnsGroupsInOrder()
+        {
+            var cache = new SimpleCacheProvider();
+            var repo = new WafRuleRepository(cache);
+            var host = "integration-test-multigroups.local";
+            EnsureHostWithRuleWithMultipleGroups(host);
+            var rules = repo.FetchWafRules(host, ConnectionString).ToList();
+            if (rules.Count > 0)
+            {
+                var ruleWithGroups = rules.FirstOrDefault(r => r.Groups.Count > 1);
+                if (ruleWithGroups != null)
+                {
+                    Assert.True(ruleWithGroups.Groups.Count >= 2);
+                    Assert.All(ruleWithGroups.Groups, g => Assert.NotNull(g.Conditions));
+                }
+            }
+        }
+
+        [Fact]
+        public void FetchWafConditions_WithGroupBasedSchema_ReturnsAllConditionsFlattened()
+        {
+            var repo = new WafRuleRepository(new SimpleCacheProvider());
+            var host = "integration-test-groups.local";
+            EnsureHostWithRuleWithGroups(host);
+            var rules = repo.FetchWafRules(host, ConnectionString).ToList();
+            if (rules.Count > 0)
+            {
+                var ruleId = rules[0].Id;
+                var conditions = repo.FetchWafConditions(ruleId, ConnectionString);
+                Assert.NotNull(conditions);
+                if (conditions.Count > 0)
+                {
+                    Assert.All(conditions, c => Assert.NotNull(c.WafGroupId));
+                }
+            }
+        }
+
+        [Fact]
+        public void FetchWafRules_CacheExpiration_RefetchesFromDb()
+        {
+            var cache = new SimpleCacheProvider();
+            var repo = new WafRuleRepository(cache);
+            var host = "integration-test-cache.local";
+            EnsureHostWithRuleAndNoConditions(host);
+            var firstFetch = repo.FetchWafRules(host, ConnectionString).ToList();
+            Assert.NotEmpty(firstFetch);
+            var cacheKey = $"WAF_RULES_{new Uri($"https://{host}").Host.ToLowerInvariant()}";
+            var cached = cache.Get(cacheKey);
+            Assert.NotNull(cached);
+            cache.Remove(cacheKey);
+            var secondFetch = repo.FetchWafRules(host, ConnectionString).ToList();
+            Assert.NotEmpty(secondFetch);
+        }
+
+        [Fact]
+        public void FetchWafRules_HostCaseInsensitive_ReturnsSameRules()
+        {
+            var cache = new SimpleCacheProvider();
+            var repo = new WafRuleRepository(cache);
+            var host = "integration-test.local";
+            EnsureHostWithRuleAndNoConditions(host);
+            var lowerCaseRules = repo.FetchWafRules(host.ToLower(), ConnectionString).ToList();
+            cache.Remove($"WAF_RULES_{host.ToLower()}");
+            var upperCaseRules = repo.FetchWafRules(host.ToUpper(), ConnectionString).ToList();
+            Assert.Equal(lowerCaseRules.Count, upperCaseRules.Count);
+        }
+
+        [Fact]
+        public void FetchWafRules_OnlyReturnsEnabledRules()
+        {
+            var cache = new SimpleCacheProvider();
+            var repo = new WafRuleRepository(cache);
+            var host = "integration-test-enabled.local";
+            EnsureHostWithEnabledAndDisabledRules(host);
+            var rules = repo.FetchWafRules(host, ConnectionString).ToList();
+            Assert.NotNull(rules);
+            Assert.All(rules, r => Assert.True(r.Habilitado));
+        }
+
+        [Fact]
+        public void FetchWafConditions_WithNegateFlag_ReturnsNegateValue()
+        {
+            var repo = new WafRuleRepository(new SimpleCacheProvider());
+            var host = "integration-test-negate.local";
+            EnsureHostWithRuleWithNegatedCondition(host);
+            var rules = repo.FetchWafRules(host, ConnectionString).ToList();
+            if (rules.Count > 0)
+            {
+                var ruleId = rules[0].Id;
+                var conditions = repo.FetchWafConditions(ruleId, ConnectionString);
+                if (conditions.Count > 0)
+                    Assert.Contains(conditions, c => c.Negate);
+            }
+        }
+
+        [Fact]
+        public void FetchWafRules_WithInvalidConnectionString_ThrowsException()
+        {
+            var repo = new WafRuleRepository(new SimpleCacheProvider());
+            var host = "test.local";
+            Assert.Throws<System.Data.SqlClient.SqlException>(() =>
+            {
+                repo.FetchWafRules(host, "Invalid Connection String").ToList();
+            });
+        }
+
+        [Fact]
+        public void FetchWafConditions_WithInvalidConnectionString_ThrowsException()
+        {
+            var repo = new WafRuleRepository(new SimpleCacheProvider());
+            Assert.Throws<System.Data.SqlClient.SqlException>(() =>
+            {
+                repo.FetchWafConditions(1, "Invalid Connection String");
+            });
+        }
+
+        private static void EnsureHostWithRuleWithGroups(string host)
+        {
+            using (var connection = new System.Data.SqlClient.SqlConnection(ConnectionString))
+            {
+                connection.Open();
+                var appId = EnsureAppEntity(connection, host, "GroupApp");
+                var ruleId = EnsureWafRule(connection, appId, "GroupRule");
+                DeleteAllGroupsForRule(connection, ruleId);
+                var groupId = InsertWafGroup(connection, ruleId, 1);
+                InsertGroupCondition(connection, groupId, ruleId, 1, 1, "/test-group", "Url", 1, false);
+            }
+        }
+
+        private static void EnsureHostWithRuleWithMultipleGroups(string host)
+        {
+            using (var connection = new System.Data.SqlClient.SqlConnection(ConnectionString))
+            {
+                connection.Open();
+                var appId = EnsureAppEntity(connection, host, "MultiGroupApp");
+                var ruleId = EnsureWafRule(connection, appId, "MultiGroupRule");
+                DeleteAllGroupsForRule(connection, ruleId);
+                var groupId1 = InsertWafGroup(connection, ruleId, 1);
+                InsertGroupCondition(connection, groupId1, ruleId, 1, 1, "/test1", "Url", 1, false);
+                var groupId2 = InsertWafGroup(connection, ruleId, 2);
+                InsertGroupCondition(connection, groupId2, ruleId, 1, 1, "/test2", "Url", 1, false);
+            }
+        }
+
+        private static void EnsureHostWithEnabledAndDisabledRules(string host)
+        {
+            using (var connection = new System.Data.SqlClient.SqlConnection(ConnectionString))
+            {
+                connection.Open();
+                var appId = EnsureAppEntity(connection, host, "EnabledApp");
+                EnsureWafRule(connection, appId, "EnabledRule", true);
+                EnsureWafRule(connection, appId, "DisabledRule", false);
+            }
+        }
+
+        private static void EnsureHostWithRuleWithNegatedCondition(string host)
+        {
+            using (var connection = new System.Data.SqlClient.SqlConnection(ConnectionString))
+            {
+                connection.Open();
+                var appId = EnsureAppEntity(connection, host, "NegateApp");
+                var ruleId = EnsureWafRule(connection, appId, "NegateRule");
+                DeleteAllGroupsForRule(connection, ruleId);
+                var groupId = InsertWafGroup(connection, ruleId, 1);
+                InsertGroupCondition(connection, groupId, ruleId, 1, 1, "/test-negate", "Url", 1, true);
+            }
+        }
+
+        private static Guid EnsureAppEntity(System.Data.SqlClient.SqlConnection connection, string host, string appName)
+        {
+            var appIdCmd = new System.Data.SqlClient.SqlCommand(
+                "IF NOT EXISTS (SELECT 1 FROM AppEntity WHERE Host = @Host) " +
+                "BEGIN INSERT INTO AppEntity (Id, Host, AppName) VALUES (@Id, @Host, @AppName) END; " +
+                "SELECT Id FROM AppEntity WHERE Host = @Host;",
+                connection);
+            var appId = Guid.NewGuid();
+            appIdCmd.Parameters.AddWithValue("@Host", host);
+            appIdCmd.Parameters.AddWithValue("@Id", appId);
+            appIdCmd.Parameters.AddWithValue("@AppName", appName);
+            var result = appIdCmd.ExecuteScalar();
+            return result is Guid existingId ? existingId : appId;
+        }
+
+        private static int EnsureWafRule(System.Data.SqlClient.SqlConnection connection, Guid appId, string ruleName, bool enabled = true)
+        {
+            var ruleCmd = new System.Data.SqlClient.SqlCommand(
+                "IF NOT EXISTS (SELECT 1 FROM WafRuleEntity WHERE AppId = @AppId AND Nombre = @Nombre) " +
+                "INSERT INTO WafRuleEntity (Nombre, ActionId, Prioridad, Habilitado, AppId) VALUES (@Nombre, 1, 1, @Enabled, @AppId);",
+                connection);
+            ruleCmd.Parameters.AddWithValue("@AppId", appId);
+            ruleCmd.Parameters.AddWithValue("@Nombre", ruleName);
+            ruleCmd.Parameters.AddWithValue("@Enabled", enabled ? 1 : 0);
+            ruleCmd.ExecuteNonQuery();
+            var getRuleIdCmd = new System.Data.SqlClient.SqlCommand(
+                "SELECT TOP 1 Id FROM WafRuleEntity WHERE AppId = @AppId AND Nombre = @Nombre ORDER BY Id DESC;",
+                connection);
+            getRuleIdCmd.Parameters.AddWithValue("@AppId", appId);
+            getRuleIdCmd.Parameters.AddWithValue("@Nombre", ruleName);
+            return Convert.ToInt32(getRuleIdCmd.ExecuteScalar());
+        }
+
+        private static void DeleteAllGroupsForRule(System.Data.SqlClient.SqlConnection connection, int ruleId)
+        {
+            var delGroupCondCmd = new System.Data.SqlClient.SqlCommand(
+                "DELETE FROM WafConditionEntity WHERE WafGroupId IN (SELECT Id FROM WafGroups WHERE WafRuleId = @RuleId)",
+                connection);
+            delGroupCondCmd.Parameters.AddWithValue("@RuleId", ruleId);
+            delGroupCondCmd.ExecuteNonQuery();
+            var delGroupCmd = new System.Data.SqlClient.SqlCommand(
+                "DELETE FROM WafGroups WHERE WafRuleId = @RuleId",
+                connection);
+            delGroupCmd.Parameters.AddWithValue("@RuleId", ruleId);
+            delGroupCmd.ExecuteNonQuery();
+        }
+
+        private static int InsertWafGroup(System.Data.SqlClient.SqlConnection connection, int ruleId, int groupOrder)
+        {
+            var insertGroupCmd = new System.Data.SqlClient.SqlCommand(
+                "INSERT INTO WafGroups (WafRuleId, GroupOrder) VALUES (@RuleId, @GroupOrder); SELECT CAST(SCOPE_IDENTITY() as int);",
+                connection);
+            insertGroupCmd.Parameters.AddWithValue("@RuleId", ruleId);
+            insertGroupCmd.Parameters.AddWithValue("@GroupOrder", groupOrder);
+            return (int)insertGroupCmd.ExecuteScalar();
+        }
+
+        private static void InsertGroupCondition(System.Data.SqlClient.SqlConnection connection, int groupId, int ruleId,
+            int fieldId, int operatorId, string valor, string fieldName, int conditionOrder, bool negate)
+        {
+            var insertCondCmd = new System.Data.SqlClient.SqlCommand(
+                "INSERT INTO WafConditionEntity (FieldId, OperatorId, Valor, WafGroupId, WafRuleEntityId, FieldName, ConditionOrder, CreationDate, Negate) " +
+                "VALUES (@FieldId, @OperatorId, @Valor, @WafGroupId, @WafRuleEntityId, @FieldName, @ConditionOrder, @CreationDate, @Negate);",
+                connection);
+            insertCondCmd.Parameters.AddWithValue("@FieldId", fieldId);
+            insertCondCmd.Parameters.AddWithValue("@OperatorId", operatorId);
+            insertCondCmd.Parameters.AddWithValue("@Valor", valor);
+            insertCondCmd.Parameters.AddWithValue("@WafGroupId", groupId);
+            insertCondCmd.Parameters.AddWithValue("@WafRuleEntityId", ruleId);
+            insertCondCmd.Parameters.AddWithValue("@FieldName", fieldName);
+            insertCondCmd.Parameters.AddWithValue("@ConditionOrder", conditionOrder);
+            insertCondCmd.Parameters.AddWithValue("@CreationDate", DateTime.UtcNow);
+            insertCondCmd.Parameters.AddWithValue("@Negate", negate);
+            insertCondCmd.ExecuteNonQuery();
         }
     }
 }

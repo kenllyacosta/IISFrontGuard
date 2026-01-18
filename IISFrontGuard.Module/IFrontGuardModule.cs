@@ -103,11 +103,20 @@ namespace IISFrontGuard.Module
         bool EvaluateCondition(WafCondition condition, HttpRequest request);
 
         /// <summary>
+        /// Evaluates a WAF rule against the HTTP request using group-based logic.
+        /// </summary>
+        /// <param name="rule">The WAF rule to evaluate.</param>
+        /// <param name="request">The HTTP request.</param>
+        /// <returns>True if the rule matches; otherwise, false.</returns>
+        bool EvaluateRule(WafRule rule, HttpRequest request);
+
+        /// <summary>
         /// Evaluates a collection of WAF conditions against the HTTP request.
         /// </summary>
         /// <param name="conditions">The conditions to evaluate.</param>
         /// <param name="request">The HTTP request.</param>
         /// <returns>True if all conditions are satisfied; otherwise, false.</returns>
+        [Obsolete("Use EvaluateRule with group-based logic instead. This method is for backward compatibility only.")]
         bool EvaluateConditions(IEnumerable<WafCondition> conditions, HttpRequest request);
 
         /// <summary>

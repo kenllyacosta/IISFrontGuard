@@ -46,7 +46,7 @@ namespace IISFrontGuard.Module.IntegrationTests.Core
             TestConfig.SetAppSetting("IISFrontGuardEncryptionKey", "TestKey123456789");
         }
 
-        [Fact]
+        [IntegrationTestFact]
         public void GetAppSettingAsInt_ShouldReturnConfiguredValue()
         {
             // Arrange
@@ -62,7 +62,7 @@ namespace IISFrontGuard.Module.IntegrationTests.Core
             Assert.Equal(42, result);
         }
 
-        [Fact]
+        [IntegrationTestFact]
         public void GetAppSettingAsInt_WhenNotFound_ShouldReturnDefault()
         {
             // Arrange
@@ -77,7 +77,7 @@ namespace IISFrontGuard.Module.IntegrationTests.Core
             Assert.Equal(99, result);
         }
 
-        [Fact]
+        [IntegrationTestFact]
         public void GetConnectionStringByHost_WithConfiguredHost_ShouldReturnHostSpecificString()
         {
             // Arrange
@@ -94,7 +94,7 @@ namespace IISFrontGuard.Module.IntegrationTests.Core
             Assert.Equal(_testConnectionString, result);
         }
 
-        [Fact]
+        [IntegrationTestFact]
         public void GetConnectionStringByHost_WithoutConfiguration_ShouldReturnFallback()
         {
             // Arrange

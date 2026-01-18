@@ -435,10 +435,131 @@ GO
 INSERT [dbo].[AppEntity] ([Id], [AppName], [AppDescription], [Host], [CreationDate], [TokenExpirationDurationHr]) VALUES (NEWID(), N'Localhost App', N'Test application for localhost', N'localhost', GETDATE(), 12)
 GO
 
+-- ================================================================
+-- Create WafGroups table and add new columns to WafConditionEntity
+-- This MUST happen BEFORE inserting example rules
+-- ================================================================
+
+CREATE TABLE WafGroups (
+    Id INT PRIMARY KEY IDENTITY(1,1),
+    WafRuleId INT NOT NULL,
+    GroupOrder INT NOT NULL,
+    CreationDate DATETIME2 NOT NULL,
+    CONSTRAINT FK_WafGroups_WafRules FOREIGN KEY (WafRuleId) 
+        REFERENCES WafRuleEntity(Id) ON DELETE CASCADE
+)
+GO
+
+ALTER TABLE WafConditionEntity
+ADD WafGroupId INT NULL,  -- Foreign key to WafGroups
+    Negate BIT NOT NULL DEFAULT 0, -- Support for negating conditions
+    CONSTRAINT FK_WafConditions_WafGroups FOREIGN KEY (WafGroupId)
+        REFERENCES WafGroups(Id) ON DELETE CASCADE
+-- For backward compatibility, keep WafRuleEntityId
+-- But new rules should use WafGroupId
+GO
+
+-- ================================================================
+-- Example: Create WAF Rule with Group-Based Schema
+-- ================================================================
+-- This example demonstrates the new group-based rule structure.
+-- Rule Logic: Block if ANY of these conditions are met (OR across groups):
+--   Group 1: POST to /admin paths with suspicious user-agent (AND within group)
+--   Group 2: Request from blocked country
+--   Group 3: Large POST body to sensitive API endpoints
+-- ================================================================
+
 -- Retrieve the Id of the newly created AppEntity
 DECLARE @LocalAppId UNIQUEIDENTIFIER
 SELECT TOP 1 @LocalAppId = [Id] FROM [dbo].[AppEntity] WHERE [Host] = N'localhost'
 
--- Insert a rule for Interactive Challenge as an example on localhost using the newly created AppEntity
+-- Create the WAF rule (Block suspicious traffic)
+DECLARE @RuleId INT
 INSERT [dbo].[WafRuleEntity] ([Nombre], [ActionId], [AppId], [Prioridad], [Habilitado], [CreationDate]) 
-VALUES (N'Interactive Challenge', 4, @LocalAppId, 0, 1, GETDATE())
+VALUES (N'Block Suspicious Traffic', 2, @LocalAppId, 10, 1, GETDATE())
+SET @RuleId = SCOPE_IDENTITY()
+
+-- ============================================================
+-- GROUP 1: POST to /admin with suspicious User-Agent
+-- ============================================================
+DECLARE @Group1Id INT
+INSERT INTO WafGroups (WafRuleId, GroupOrder, CreationDate)
+VALUES (@RuleId, 1, GETDATE())
+SET @Group1Id = SCOPE_IDENTITY()
+
+-- Condition 1.1: HTTP Method = POST
+INSERT INTO WafConditionEntity (FieldId, OperatorId, Valor, WafGroupId, WafRuleEntityId, CreationDate, Negate)
+VALUES (7, 1, 'post', @Group1Id, @RuleId, GETDATE(), 0)
+
+-- Condition 1.2: Path starts with /admin
+INSERT INTO WafConditionEntity (FieldId, OperatorId, Valor, WafGroupId, WafRuleEntityId, CreationDate, Negate)
+VALUES (14, 7, '/admin', @Group1Id, @RuleId, GETDATE(), 0)
+
+-- Condition 1.3: User-Agent contains 'bot' OR 'crawler' OR 'scanner'
+INSERT INTO WafConditionEntity (FieldId, OperatorId, Valor, WafGroupId, WafRuleEntityId, CreationDate, Negate)
+VALUES (9, 13, 'bot,crawler,scanner,nikto,sqlmap', @Group1Id, @RuleId, GETDATE(), 0)
+
+-- ============================================================
+-- GROUP 2: Requests from blocked countries
+-- ============================================================
+DECLARE @Group2Id INT
+INSERT INTO WafGroups (WafRuleId, GroupOrder, CreationDate)
+VALUES (@RuleId, 2, GETDATE())
+SET @Group2Id = SCOPE_IDENTITY()
+
+-- Condition 2.1: Country ISO2 code in blocked list
+INSERT INTO WafConditionEntity (FieldId, OperatorId, Valor, WafGroupId, WafRuleEntityId, CreationDate, Negate)
+VALUES (21, 13, 'xx,yy,zz', @Group2Id, @RuleId, GETDATE(), 0)
+
+-- ============================================================
+-- GROUP 3: Large POST bodies to sensitive API endpoints
+-- ============================================================
+DECLARE @Group3Id INT
+INSERT INTO WafGroups (WafRuleId, GroupOrder, CreationDate)
+VALUES (@RuleId, 3, GETDATE())
+SET @Group3Id = SCOPE_IDENTITY()
+
+-- Condition 3.1: HTTP Method = POST
+INSERT INTO WafConditionEntity (FieldId, OperatorId, Valor, WafGroupId, WafRuleEntityId, CreationDate, Negate)
+VALUES (7, 1, 'post', @Group3Id, @RuleId, GETDATE(), 0)
+
+-- Condition 3.2: Path starts with /api
+INSERT INTO WafConditionEntity (FieldId, OperatorId, Valor, WafGroupId, WafRuleEntityId, CreationDate, Negate)
+VALUES (14, 7, '/api', @Group3Id, @RuleId, GETDATE(), 0)
+
+-- Condition 3.3: Body length > 10MB (10485760 bytes)
+INSERT INTO WafConditionEntity (FieldId, OperatorId, Valor, WafGroupId, WafRuleEntityId, CreationDate, Negate)
+VALUES (19, 17, '10485760', @Group3Id, @RuleId, GETDATE(), 0)
+
+PRINT 'Created WAF Rule: Block Suspicious Traffic (ID: ' + CAST(@RuleId AS VARCHAR) + ')'
+PRINT '  - Group 1: POST to /admin with suspicious user-agent (3 conditions)'
+PRINT '  - Group 2: Blocked countries (1 condition)'
+PRINT '  - Group 3: Large POST to /api (3 conditions)'
+PRINT '  - Rule Logic: (Group1) OR (Group2) OR (Group3)'
+PRINT ''
+
+-- ================================================================
+-- Example: Create WAF Rule for Interactive Challenge
+-- ================================================================
+-- Simpler rule using groups to demonstrate interactive challenge
+-- ================================================================
+
+DECLARE @ChallengeRuleId INT
+INSERT [dbo].[WafRuleEntity] ([Nombre], [ActionId], [AppId], [Prioridad], [Habilitado], [CreationDate]) 
+VALUES (N'Interactive Challenge - High Traffic', 4, @LocalAppId, 20, 1, GETDATE())
+SET @ChallengeRuleId = SCOPE_IDENTITY()
+
+-- Group 1: High frequency requests from same IP
+DECLARE @ChallengeGroup1Id INT
+INSERT INTO WafGroups (WafRuleId, GroupOrder, CreationDate)
+VALUES (@ChallengeRuleId, 1, GETDATE())
+SET @ChallengeGroup1Id = SCOPE_IDENTITY()
+
+-- Condition: User-Agent is present (basic bot detection)
+INSERT INTO WafConditionEntity (FieldId, OperatorId, Valor, WafGroupId, WafRuleEntityId, CreationDate, Negate)
+VALUES (9, 21, '', @ChallengeGroup1Id, @ChallengeRuleId, GETDATE(), 0)
+
+PRINT 'Created WAF Rule: Interactive Challenge - High Traffic (ID: ' + CAST(@ChallengeRuleId AS VARCHAR) + ')'
+PRINT '  - Group 1: Verify user-agent is present'
+PRINT ''
+GO
