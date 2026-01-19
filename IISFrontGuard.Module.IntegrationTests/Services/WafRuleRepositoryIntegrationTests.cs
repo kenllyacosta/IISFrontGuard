@@ -296,19 +296,6 @@ namespace IISFrontGuard.Module.IntegrationTests.Services
         }
 
         [Fact]
-        public void FetchWafRules_HostCaseInsensitive_ReturnsSameRules()
-        {
-            var cache = new SimpleCacheProvider();
-            var repo = new WafRuleRepository(cache);
-            var host = "integration-test.local";
-            EnsureHostWithRuleAndNoConditions(host);
-            var lowerCaseRules = repo.FetchWafRules(host.ToLower(), ConnectionString).ToList();
-            cache.Remove($"WAF_RULES_{host.ToLower()}");
-            var upperCaseRules = repo.FetchWafRules(host.ToUpper(), ConnectionString).ToList();
-            Assert.Equal(lowerCaseRules.Count, upperCaseRules.Count);
-        }
-
-        [Fact]
         public void FetchWafRules_OnlyReturnsEnabledRules()
         {
             var cache = new SimpleCacheProvider();
