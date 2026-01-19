@@ -108,8 +108,18 @@
     <Compile Include="Abstractions\ResponseHeaderManagerTests.cs" />
     <Compile Include="FrontGuardModuleTests.cs" />
     <Compile Include="Helpers\TestModelFactory.cs" />
+    <Compile Include="Models\ChallengeContextTests.cs" />
+    <Compile Include="Models\ChallengeFailureInfoTests.cs" />
     <Compile Include="Models\LogEntrySafeResponseTests.cs" />
+    <Compile Include="Models\RateLimitInfoTests.cs" />
+    <Compile Include="Models\RequestLogContextTests.cs" />
     <Compile Include="Models\SafeRequestDataTests.cs" />
+    <Compile Include="Models\SecurityEventSeverityTests.cs" />
+    <Compile Include="Models\SecurityEventTests.cs" />
+    <Compile Include="Models\SecurityEventTypesTests.cs" />
+    <Compile Include="Models\WafConditionTests.cs" />
+    <Compile Include="Models\WafGroupTests.cs" />
+    <Compile Include="Models\WafRuleTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Services\AppConfigConfigurationProviderTests.cs" />
     <Compile Include="Services\CompiledRuleRepositoryTests.cs" />
@@ -118,6 +128,7 @@
     <Compile Include="Services\HttpContextAccessorTests.cs" />
     <Compile Include="Services\HttpRuntimeCacheProviderTests.cs" />
     <Compile Include="Services\IpValidatorTests.cs" />
+    <Compile Include="Services\MatrixRuleCompilationTests.cs" />
     <Compile Include="Services\RequestLoggerAdapterTests.cs" />
     <Compile Include="Services\RuleCompilerTests.cs" />
     <Compile Include="Services\WafRuleRepositoryTests.cs" />

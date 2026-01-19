@@ -159,6 +159,8 @@
     <None Include="INSTALLATION_CHANGES.md" />
     <None Include="packages.config" />
     <Content Include="icon.png" />
+    <Content Include="Scripts\cleanup_matrix_test_data.sql" />
+    <Content Include="Scripts\matrix_test_data.sql" />
     <Content Include="Templates\blocked.html" />
     <Content Include="Templates\interactive.html" />
     <Content Include="Templates\managed.html" />
@@ -171,6 +173,7 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <None Include="register_global_module.bat" />
+    <None Include="Scripts\MATRIX_TEST_SUITE_README.md" />
     <None Include="tools\register_global_module.bat" />
     <None Include="tools\uninstall.ps1" />
     <None Include="UNINSTALL_GUIDE.md" />
