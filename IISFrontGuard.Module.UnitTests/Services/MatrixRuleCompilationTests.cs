@@ -29,7 +29,7 @@ namespace IISFrontGuard.Module.UnitTests.Services
         public void OneTimeSetUp()
         {
             // Get connection string
-            _connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["IISFrontGuardDB"]?.ConnectionString
+            _connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["IISFrontGuardConnection"]?.ConnectionString
                 ?? "Server=(local);Database=IISFrontGuard;Integrated Security=true;";
 
             // Run matrix test data setup script
