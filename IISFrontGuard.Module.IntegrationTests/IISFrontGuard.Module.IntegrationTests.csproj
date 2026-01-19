@@ -118,6 +118,7 @@
     <Compile Include="Services\WafRuleRepositoryIntegrationTests.cs" />
     <Compile Include="Services\WebhookNotifierIntegrationTests.cs" />
     <Compile Include="TestWebhookServer.cs" />
+    <Compile Include="WAF\MatrixRuleLoadingTests.cs" />
     <Compile Include="WAF\WafConditionEvaluationTests.cs" />
     <Compile Include="WAF\WafRuleEvaluationTests.cs" />
   </ItemGroup>
