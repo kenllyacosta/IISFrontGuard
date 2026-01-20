@@ -213,24 +213,34 @@ namespace IISFrontGuard.Module.Services
             {
                 while (reader.Read())
                 {
-                    conditions.Add(new WafCondition
-                    {
-                        Id = reader.GetInt32(0),
-                        FieldId = reader.GetByte(1),
-                        OperatorId = reader.GetByte(2),
-                        Valor = reader.IsDBNull(3) ? string.Empty : reader.GetString(3).ToLower(),
-                        FieldName = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
-                        WafGroupId = reader.IsDBNull(5) ? (int?)null : reader.GetInt32(5),
-#pragma warning disable CS0618 // Type or member is obsolete
-                        WafRuleEntityId = reader.IsDBNull(6) ? 0 : reader.GetInt32(6),
-#pragma warning restore CS0618 // Type or member is obsolete
-                        CreationDate = reader.IsDBNull(7) ? DateTime.UtcNow : reader.GetDateTime(7),
-                        Negate = reader.GetBoolean(8)
-                    });
+                    conditions.Add(ReadConditionFromReader(reader));
                 }
             }
 
             return conditions;
+        }
+
+        /// <summary>
+        /// Reads a WafCondition from a SqlDataReader (new schema format with 9 columns).
+        /// </summary>
+        /// <param name="reader">The data reader positioned at a condition row.</param>
+        /// <returns>A WafCondition populated from the current reader row.</returns>
+        private static WafCondition ReadConditionFromReader(SqlDataReader reader)
+        {
+            return new WafCondition
+            {
+                Id = reader.GetInt32(0),
+                FieldId = reader.GetByte(1),
+                OperatorId = reader.GetByte(2),
+                Valor = reader.IsDBNull(3) ? string.Empty : reader.GetString(3).ToLower(),
+                FieldName = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
+                WafGroupId = reader.IsDBNull(5) ? (int?)null : reader.GetInt32(5),
+#pragma warning disable CS0618 // Type or member is obsolete
+                WafRuleEntityId = reader.IsDBNull(6) ? 0 : reader.GetInt32(6),
+#pragma warning restore CS0618 // Type or member is obsolete
+                CreationDate = reader.IsDBNull(7) ? DateTime.UtcNow : reader.GetDateTime(7),
+                Negate = reader.GetBoolean(8)
+            };
         }
 
         /// <summary>
@@ -355,20 +365,7 @@ namespace IISFrontGuard.Module.Services
             {
                 while (reader.Read())
                 {
-                    conditions.Add(new WafCondition
-                    {
-                        Id = reader.GetInt32(0),
-                        FieldId = reader.GetByte(1),
-                        OperatorId = reader.GetByte(2),
-                        Valor = reader.IsDBNull(3) ? string.Empty : reader.GetString(3).ToLower(),
-                        FieldName = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
-                        WafGroupId = reader.IsDBNull(5) ? (int?)null : reader.GetInt32(5),
-#pragma warning disable CS0618 // Type or member is obsolete
-                        WafRuleEntityId = reader.IsDBNull(6) ? 0 : reader.GetInt32(6),
-#pragma warning restore CS0618 // Type or member is obsolete
-                        CreationDate = reader.IsDBNull(7) ? DateTime.UtcNow : reader.GetDateTime(7),
-                        Negate = reader.GetBoolean(8)
-                    });
+                    conditions.Add(ReadConditionFromReader(reader));
                 }
             }
 
