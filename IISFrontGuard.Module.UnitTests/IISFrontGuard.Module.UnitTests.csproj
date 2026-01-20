@@ -127,6 +127,7 @@
     <Compile Include="Services\GeoIPServiceTests.cs" />
     <Compile Include="Services\HttpContextAccessorTests.cs" />
     <Compile Include="Services\HttpRuntimeCacheProviderTests.cs" />
+    <Compile Include="Services\IndexedCompiledRuleSetTests.cs" />
     <Compile Include="Services\IpValidatorTests.cs" />
     <Compile Include="Services\MatrixRuleCompilationTests.cs" />
     <Compile Include="Services\RequestLoggerAdapterTests.cs" />
@@ -141,6 +142,7 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <None Include="packages.config" />
+    <None Include="Services\IndexedCompiledRuleSetTests_Coverage_Summary.md" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\IISFrontGuard.Module\IISFrontGuard.Module.csproj">
