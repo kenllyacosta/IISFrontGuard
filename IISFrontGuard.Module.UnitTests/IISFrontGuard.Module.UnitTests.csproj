@@ -112,6 +112,7 @@
     <Compile Include="Models\ChallengeFailureInfoTests.cs" />
     <Compile Include="Models\LogEntrySafeResponseTests.cs" />
     <Compile Include="Models\RateLimitInfoTests.cs" />
+    <Compile Include="Models\RequestContextTests.cs" />
     <Compile Include="Models\RequestLogContextTests.cs" />
     <Compile Include="Models\SafeRequestDataTests.cs" />
     <Compile Include="Models\SecurityEventSeverityTests.cs" />
@@ -141,7 +142,9 @@
     <Content Include="TestData\GeoIP2-Country-Test.mmdb">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <None Include="Models\RequestContextTests_Coverage_Summary.md" />
     <None Include="packages.config" />
+    <None Include="Services\CompiledRuleRepositoryTests_Coverage_Summary.md" />
     <None Include="Services\IndexedCompiledRuleSetTests_Coverage_Summary.md" />
   </ItemGroup>
   <ItemGroup>
